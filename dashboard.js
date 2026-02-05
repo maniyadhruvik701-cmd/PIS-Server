@@ -692,11 +692,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.count > 0) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-            < td > ${data.orderNo}</td >
+                    <td>${data.orderNo}</td>
                     <td>${data.design}</td>
                     <td>${data.platform}</td>
                     <td>${data.count}</td>
-        `;
+                `;
                 reportTableBody.appendChild(tr);
             }
         });
@@ -784,7 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const formattedDate = `${day} -${month} -${year} `;
 
             const tr = document.createElement('tr');
-            tr.innerHTML = `< td > ${formattedDate}</td ><td>${item.orderNo}</td><td>${item.design}</td><td>${item.platform}</td><td>${item.count}</td>`;
+            tr.innerHTML = `<td>${formattedDate}</td><td>${item.orderNo}</td><td>${item.design}</td><td>${item.platform}</td><td>${item.count}</td>`;
             dateWiseTableBody.appendChild(tr);
         });
 
