@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Data Entry</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-gem"></i>
+                <span>PIS Admin</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" id="navData">
+                    <a href="#">
+                        <i class="fas fa-table"></i>
+                        <span>Data</span>
+                    </a>
+                </li>
+                <li id="navReports">
+                    <a href="#">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Total Pending</span>
+                    </a>
+                </li>
+                <li id="navDateWise">
+                    <a href="#">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Date Wise Pending</span>
+                    </a>
+                </li>
+                <li id="navLatePis">
+                    <a href="#">
+                        <i class="fas fa-history"></i>
+                        <span>Late PIS Report</span>
+                    </a>
+                </li>
+                <li id="navSettings">
+                    <a href="#">
+                        <i class="fas fa-cogs"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+            <div class="logout">
+                <a href="index.html">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header>
+                <h1>Entry Data</h1>
+                <div class="user-profile">
+                    <span>Admin User</span>
+                    <div class="avatar"><i class="fas fa-user"></i></div>
+                </div>
+            </header>
+
+            <div class="table-container" id="dataSection">
+                <div class="table-header-controls">
+                    <div class="left-controls">
+                        <button id="addRowBtn" class="btn-primary"><i class="fas fa-plus"></i> Add 1</button>
+                        <button id="add50Btn" class="btn-secondary"><i class="fas fa-layer-group"></i> Add 50</button>
+                        <button id="managePlatformsBtn" class="btn-secondary" style="background: #eab308;"><i
+                                class="fas fa-list"></i> Platforms</button>
+                        <button id="manageFittingsBtn" class="btn-secondary" style="background: #10b981;"><i
+                                class="fas fa-tshirt"></i> Fittings</button>
+                    </div>
+                    <div class="right-controls">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" placeholder="Search data...">
+                        </div>
+                        <button id="clearAllBtn" class="btn-danger"><i class="fas fa-trash-alt"></i> Clear All</button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Order Date</th>
+                                <th>Order No</th>
+                                <th>Design No</th>
+                                <th>Blouse Size</th>
+                                <th>Customize Blouse</th>
+                                <th>Koti Size</th>
+                                <th>Kurta Size</th>
+                                <th>Platform</th>
+                                <th>Fitting Name</th>
+                                <th>Final Date</th>
+                                <th>Receive Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be added here dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Showing <span id="startIndex">0</span> - <span id="endIndex">0</span> of <span
+                            id="totalEntries">0</span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button id="prevBtn" disabled><i class="fas fa-chevron-left"></i></button>
+                        <span id="pageIndicator">Page 1</span>
+                        <button id="nextBtn" disabled><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="jump-to-page">
+                        <input type="number" id="jumpPageInput" min="1" placeholder="Go to">
+                        <button id="jumpPageBtn">Go</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Section (Hidden by default) -->
+            <div class="reports-container" id="reportsSection" style="display: none;">
+                <h2 style="margin-bottom: 20px;">Total Pending</h2>
+                <div class="report-controls">
+                    <div class="date-group">
+                        <label>Start Date:</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="date-group">
+                        <label>End Date:</label>
+                        <input type="date" id="endDate">
+                    </div>
+                    <button id="generateReportBtn" class="btn-primary"><i class="fas fa-search"></i> Generate
+                        Report</button>
+                    <button id="exportTotalPendingPdfBtn" class="btn-secondary" style="background: #ef4444;"><i
+                            class="fas fa-file-pdf"></i> Export PDF</button>
+                </div>
+
+                <div class="report-table-wrapper" style="overflow-x: auto;">
+                    <table id="reportTable">
+                        <thead>
+                            <tr>
+                                <th>Order No</th>
+                                <th>Design No</th>
+                                <th>Platform</th>
+                                <th>Pending</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Report Data will be added here -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: rgba(0, 198, 255, 0.2); font-weight: bold;">
+                                <td style="text-align: left; padding-left: 10px;">Grand Total</td>
+                                <td></td>
+                                <td></td>
+                                <td id="grandTotal">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Date Wise Pending Section (Hidden by default) -->
+            <div class="reports-container" id="dateWiseSection" style="display: none;">
+                <h2 style="margin-bottom: 20px;">Date Wise Pending</h2>
+                <div class="report-controls">
+                    <div class="date-group">
+                        <label>Start Date:</label>
+                        <input type="date" id="dateWiseStartDate">
+                    </div>
+                    <div class="date-group">
+                        <label>End Date:</label>
+                        <input type="date" id="dateWiseEndDate">
+                    </div>
+                    <button id="generateDateWiseBtn" class="btn-primary"><i class="fas fa-search"></i> Generate
+                        Report</button>
+                    <button id="exportDateWisePdfBtn" class="btn-secondary" style="background: #ef4444;"><i
+                            class="fas fa-file-pdf"></i> Export PDF</button>
+                </div>
+
+                <div class="report-table-wrapper" style="overflow-x: auto;">
+                    <table id="dateWiseTable" style="width: 70%; margin: 0 auto;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Order No</th>
+                                <th>Design No</th>
+                                <th>Platform</th>
+                                <th>Pending</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Report Data will be added here -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: rgba(0, 198, 255, 0.2); font-weight: bold;">
+                                <td style="text-align: left; padding-left: 10px;">Grand Total</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td id="dateWiseGrandTotal">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Late PIS Report Section (Hidden by default) -->
+            <div class="reports-container" id="latePisSection" style="display: none;">
+                <h2 style="margin-bottom: 20px;">Late PIS Report</h2>
+                <div class="report-controls">
+                    <div class="date-group">
+                        <label>Start Date:</label>
+                        <input type="date" id="lateStartDate">
+                    </div>
+                    <div class="date-group">
+                        <label>End Date:</label>
+                        <input type="date" id="lateEndDate">
+                    </div>
+                    <button id="generateLateReportBtn" class="btn-primary"><i class="fas fa-search"></i> Generate
+                        Report</button>
+                </div>
+
+                <div class="report-table-wrapper" style="overflow-x: auto;">
+                    <table id="latePisTable" style="width: 80%; margin: 0 auto;">
+                        <thead>
+                            <tr>
+                                <th>Design No</th>
+                                <th>Late Pieces</th>
+                                <th>Percentage (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Report Data will be added here -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: rgba(0, 198, 255, 0.2); font-weight: bold;">
+                                <td style="text-align: left; padding-left: 30px;">Grand Total</td>
+                                <td id="lateTotalLate">0</td>
+                                <td id="lateTotalPercentage">-</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Settings Section (Hidden by default) -->
+            <div class="reports-container" id="settingsSection" style="display: none;">
+                <h2 style="margin-bottom: 20px;">Settings & Data Sync</h2>
+
+                <div class="report-controls" style="flex-direction: column; align-items: flex-start;">
+                    <h3>Data Backup & Restore</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 15px;">
+                        Use this to transfer your data to another device. <br>
+                        1. <strong>Backup</strong>: Download your data to a file.<br>
+                        2. <strong>Restore</strong>: Upload that file on the other device.
+                    </p>
+                    <div class="date-group" style="flex-direction: row; gap: 20px;">
+                        <button id="backupDataBtn" class="btn-primary"><i class="fas fa-download"></i> Backup
+                            Data</button>
+
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="file" id="restoreDataInput" style="display: none;" accept=".json">
+                            <button id="restoreDataBtn" class="btn-secondary"><i class="fas fa-upload"></i> Restore
+                                Data</button>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 30px;">Cloud Sync (Firebase)</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 15px;">
+                        Your data is automatically synchronized with the secure cloud database.<br>
+                        You can access your data from any device by logging in.
+                    </p>
+                    <div class="date-group" style="width: 100%;">
+                        <span id="firebaseStatus"
+                            style="font-size: 1.1em; font-weight: bold; margin-top: 5px;">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Platform Management Modal -->
+            <div id="platformModal" class="modal">
+
+
+                <div class="modal-content">
+                    <span class="close-modal">&times;</span>
+                    <h2>Manage Platforms</h2>
+
+                    <div class="add-platform-group">
+                        <input type="text" id="newPlatformInput" placeholder="Enter new platform name">
+                        <button id="addPlatformBtn" class="btn-primary">Add</button>
+                    </div>
+
+                    <div class="platform-list-container">
+                        <ul id="platformList">
+                            <!-- List items will be added here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fitting Management Modal -->
+            <div id="fittingModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal close-fitting-modal">&times;</span>
+                    <h2>Manage Fittings</h2>
+
+                    <div class="add-platform-group">
+                        <input type="text" id="newFittingInput" placeholder="Enter new fitting name">
+                        <button id="addFittingBtn" class="btn-primary">Add</button>
+                    </div>
+
+                    <div class="platform-list-container">
+                        <ul id="fittingList">
+                            <!-- List items will be added here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- jsPDF and AutoTable for PDF Generation -->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+            <script
+                src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+            <!-- Firebase SDKs -->
+            <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+            <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+            <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+            <script src="dashboard.js"></script>
+</body>
+
+</html>
