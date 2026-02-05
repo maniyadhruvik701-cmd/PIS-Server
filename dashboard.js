@@ -601,10 +601,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-            < td > ${design}</td >
+                <td>${design}</td>
                 <td>${data.late}</td>
                 <td>${percentage}%</td>
-        `;
+            `;
             latePisTableBody.appendChild(tr);
         });
 
