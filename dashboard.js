@@ -879,7 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
         platformOptions.forEach((platform, index) => {
             const li = document.createElement('li');
             li.innerHTML = `
-            < span > ${platform}</span >
+            <span>${platform}</span>
                 <button class="platform-delete-btn" data-type="platform" data-index="${index}"><i class="fas fa-trash"></i></button>
         `;
             platformList.appendChild(li);
@@ -901,7 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function deletePlatform(index) {
-        if (confirm(`Delete "${platformOptions[index]}" ? `)) {
+        if (confirm(`Delete "${platformOptions[index]}"?`)) {
             platformOptions.splice(index, 1);
             savePlatforms();
             renderPlatformList();
@@ -915,7 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fittingOptions.forEach((fitting, index) => {
             const li = document.createElement('li');
             li.innerHTML = `
-            < span > ${fitting}</span >
+            <span>${fitting}</span>
                 <button class="platform-delete-btn" data-type="fitting" data-index="${index}"><i class="fas fa-trash"></i></button>
         `;
             fittingList.appendChild(li);
@@ -937,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function deleteFitting(index) {
-        if (confirm(`Delete "${fittingOptions[index]}" ? `)) {
+        if (confirm(`Delete "${fittingOptions[index]}"?`)) {
             fittingOptions.splice(index, 1);
             saveFittings();
             renderFittingList();
@@ -947,7 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Shared Listener Attachment ---
     function attachDeleteListeners(type) {
-        document.querySelectorAll(`.platform - delete -btn[data - type="${type}"]`).forEach(btn => {
+        document.querySelectorAll(`.platform-delete-btn[data-type="${type}"]`).forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const index = e.currentTarget.getAttribute('data-index');
                 if (type === 'platform') deletePlatform(index);
