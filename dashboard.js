@@ -661,11 +661,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
+                    const fittingName = row.fittingName || "-";
+                    const blouseSize = row.blouseSize || "-";
+                    const kotiSize = row.kotiSize || "-";
+                    const kurtaSize = row.kurtaSize || "-";
 
-                    const key = `${orderNo}| ${design}| ${platform} `;
+                    const key = `${orderNo}| ${design}| ${platform}| ${fittingName}| ${blouseSize}| ${kotiSize}| ${kurtaSize}`;
 
                     if (!reportMap[key]) {
-                        reportMap[key] = { orderNo: orderNo, design: design, platform: platform, count: 0 };
+                        reportMap[key] = {
+                            orderNo,
+                            design,
+                            platform,
+                            fittingName,
+                            blouseSize,
+                            kotiSize,
+                            kurtaSize,
+                            count: 0
+                        };
                     }
 
                     // Count the row itself as 1 pending item, regardless of sizes
@@ -695,6 +708,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${data.orderNo}</td>
                     <td>${data.design}</td>
                     <td>${data.platform}</td>
+                    <td>${data.fittingName}</td>
+                    <td>${data.blouseSize}</td>
+                    <td>${data.kotiSize}</td>
+                    <td>${data.kurtaSize}</td>
                     <td>${data.count}</td>
                 `;
                 reportTableBody.appendChild(tr);
@@ -702,7 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (keys.length === 0 || grandTotal === 0) {
-            reportTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No pending data found for this date range.</td></tr>';
+            reportTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No pending data found for this date range.</td></tr>';
         }
 
         // Update Grand Totals
@@ -742,6 +759,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
+                    const fittingName = row.fittingName || "-";
+                    const blouseSize = row.blouseSize || "-";
+                    const kotiSize = row.kotiSize || "-";
+                    const kurtaSize = row.kurtaSize || "-";
 
                     // Count the row itself as 1 pending item
                     let itemsInRow = 1;
@@ -749,11 +770,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (itemsInRow > 0) {
                         // Check if we already have an entry for this Deadline + Design + Platform + OrderNo
                         // We use row.finalDate as the 'date' property for grouping
-                        const existingEntry = reportData.find(item => item.date === row.finalDate && item.design === design && item.platform === platform && item.orderNo === orderNo);
+                        const existingEntry = reportData.find(item =>
+                            item.date === row.finalDate &&
+                            item.design === design &&
+                            item.platform === platform &&
+                            item.orderNo === orderNo &&
+                            item.fittingName === fittingName &&
+                            item.blouseSize === blouseSize &&
+                            item.kotiSize === kotiSize &&
+                            item.kurtaSize === kurtaSize
+                        );
                         if (existingEntry) {
                             existingEntry.count += itemsInRow;
                         } else {
-                            reportData.push({ date: row.finalDate, orderNo: orderNo, design: design, platform: platform, count: itemsInRow });
+                            reportData.push({
+                                date: row.finalDate,
+                                orderNo,
+                                design,
+                                platform,
+                                fittingName,
+                                blouseSize,
+                                kotiSize,
+                                kurtaSize,
+                                count: itemsInRow
+                            });
                         }
                         grandTotal += itemsInRow;
                     }
@@ -784,12 +824,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const formattedDate = `${day} -${month} -${year} `;
 
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${formattedDate}</td><td>${item.orderNo}</td><td>${item.design}</td><td>${item.platform}</td><td>${item.count}</td>`;
+            tr.innerHTML = `
+                <td>${formattedDate}</td>
+                <td>${item.orderNo}</td>
+                <td>${item.design}</td>
+                <td>${item.platform}</td>
+                <td>${item.fittingName}</td>
+                <td>${item.blouseSize}</td>
+                <td>${item.kotiSize}</td>
+                <td>${item.kurtaSize}</td>
+                <td>${item.count}</td>
+            `;
             dateWiseTableBody.appendChild(tr);
         });
 
         if (reportData.length === 0) {
-            dateWiseTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No pending data found for this date range.</td></tr>';
+            dateWiseTableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No pending data found for this date range.</td></tr>';
         }
         dateWiseGrandTotal.textContent = grandTotal;
     });
@@ -800,7 +850,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     exportTotalPendingPdfBtn.addEventListener('click', () => {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        const doc = new jsPDF({ orientation: 'landscape' });
 
         const startDate = startDateInput.value;
         const endDate = endDateInput.value;
@@ -822,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     exportDateWisePdfBtn.addEventListener('click', () => {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        const doc = new jsPDF({ orientation: 'landscape' });
 
         const startDate = dateWiseStartDate.value;
         const endDate = dateWiseEndDate.value;
