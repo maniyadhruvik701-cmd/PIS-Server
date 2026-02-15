@@ -72,10 +72,23 @@ document.addEventListener('DOMContentLoaded', () => {
             fittingOptions = [...defaultFittings];
             saveFittings();
         }
+        populateReportFilters();
     }
 
     function saveFittings() {
         localStorage.setItem('pis_fittings', JSON.stringify(fittingOptions));
+        populateReportFilters();
+    }
+
+    function populateReportFilters() {
+        const reportSelect = document.getElementById('reportFittingFilter');
+        const dateWiseSelect = document.getElementById('dateWiseFittingFilter');
+
+        const defaultOption = '<option value="">All Fittings</option>';
+        const optionsHtml = fittingOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+
+        if (reportSelect) reportSelect.innerHTML = defaultOption + optionsHtml;
+        if (dateWiseSelect) dateWiseSelect.innerHTML = defaultOption + optionsHtml;
     }
 
     // --- Data Management Functions ---
@@ -643,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const startDate = start;
         const endDate = end;
+        const selectedFitting = document.getElementById('reportFittingFilter').value;
 
         // Grouping Data
         const reportMap = {};
@@ -656,6 +670,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Filter by date range
             if (filterDate >= startDate && filterDate <= endDate) {
+                // Filter by Fitting Name if selected
+                if (selectedFitting && row.fittingName !== selectedFitting) return;
+
                 // Determine if pending based on Receive Date (Empty or Null)
                 if (!row.receiveDate || row.receiveDate.trim() === '') {
                     const design = row.designNo || "Unknown";
@@ -744,6 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const startDate = start;
         const endDate = end;
+        const selectedFitting = document.getElementById('dateWiseFittingFilter').value;
 
         const reportData = [];
         let grandTotal = 0;
@@ -754,6 +772,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const filterDate = row.finalDate;
 
             if (filterDate >= startDate && filterDate <= endDate) {
+                // Filter by Fitting Name if selected
+                if (selectedFitting && row.fittingName !== selectedFitting) return;
+
                 // Check for empty Receive Date
                 if (!row.receiveDate || row.receiveDate.trim() === '') {
                     const design = row.designNo || "Unknown";
