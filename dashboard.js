@@ -906,16 +906,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Collect unique Design Nos (rows) and Platforms (columns)
+        // Design Nos (rows) from filtered data; Platforms (columns) from saved platformOptions
         const designSet = new Set();
-        const platformSet = new Set();
         filtered.forEach(row => {
             if (row.designNo) designSet.add(row.designNo);
-            if (row.platform) platformSet.add(row.platform);
         });
 
         const designs = Array.from(designSet).sort();
-        const platforms = Array.from(platformSet).sort();
+        // Use the full saved platform list as columns (same order as managed)
+        const platforms = platformOptions.slice();
 
         // Build pivot map: designNo -> platform -> count
         const pivot = {};
