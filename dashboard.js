@@ -225,7 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
             platform: '',
             fittingName: '',
             finalDate: '', // Deadline
-            receiveDate: ''
+            receiveDate: '',
+            shipDate: ''
         };
     }
 
@@ -284,8 +285,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         row.innerHTML = `
             <td class="row-index">${displayIndex + 1}</td>
-            <td><input type="date" data-field="date" value="${data.date || ''}"></td>
             <td><input type="date" data-field="orderDate" value="${data.orderDate || ''}"></td>
+            <td><input type="date" data-field="date" value="${data.date || ''}"></td>
             <td><input type="text" data-field="orderNo" placeholder="Order No" value="${data.orderNo || ''}"></td>
             <td><input type="text" data-field="designNo" placeholder="Design No" value="${data.designNo || ''}"></td>
             <td><input type="text" data-field="blouseSize" placeholder="Size" value="${data.blouseSize || ''}"></td>
@@ -306,6 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </td>
             <td><input type="date" data-field="finalDate" value="${data.finalDate || ''}"></td>
             <td><input type="date" data-field="receiveDate" value="${data.receiveDate || ''}"></td>
+            <td><input type="date" data-field="shipDate" value="${data.shipDate || ''}"></td>
             <td style="text-align: center;">
                 <button class="delete-btn" title="Delete Row"><i class="fas fa-trash"></i></button>
             </td>
@@ -432,10 +434,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const navDateWise = document.getElementById('navDateWise');
     const navLatePis = document.getElementById('navLatePis');
 
+    const navTotalOrder = document.getElementById('navTotalOrder');
+
     const dataSection = document.getElementById('dataSection');
     const reportsSection = document.getElementById('reportsSection');
     const dateWiseSection = document.getElementById('dateWiseSection');
     const latePisSection = document.getElementById('latePisSection');
+    const totalOrderSection = document.getElementById('totalOrderSection');
     const settingsSection = document.getElementById('settingsSection');
 
     // settings nav
@@ -447,12 +452,14 @@ document.addEventListener('DOMContentLoaded', () => {
         reportsSection.style.display = 'none';
         dateWiseSection.style.display = 'none';
         latePisSection.style.display = 'none';
+        totalOrderSection.style.display = 'none';
         settingsSection.style.display = 'none';
 
         navData.classList.remove('active');
         navReports.classList.remove('active');
         navDateWise.classList.remove('active');
         navLatePis.classList.remove('active');
+        navTotalOrder.classList.remove('active');
         navSettings.classList.remove('active');
 
         if (tab === 'data') {
@@ -467,6 +474,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (tab === 'latepis') {
             latePisSection.style.display = 'flex';
             navLatePis.classList.add('active');
+        } else if (tab === 'totalorder') {
+            totalOrderSection.style.display = 'flex';
+            navTotalOrder.classList.add('active');
         } else if (tab === 'settings') {
             settingsSection.style.display = 'flex';
             navSettings.classList.add('active');
@@ -477,6 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
     navReports.addEventListener('click', (e) => { e.preventDefault(); switchTab('reports'); });
     navDateWise.addEventListener('click', (e) => { e.preventDefault(); switchTab('datewise'); });
     navLatePis.addEventListener('click', (e) => { e.preventDefault(); switchTab('latepis'); });
+    navTotalOrder.addEventListener('click', (e) => { e.preventDefault(); switchTab('totalorder'); });
     navSettings.addEventListener('click', (e) => { e.preventDefault(); switchTab('settings'); });
 
     // --- Backup & Restore Logic ---
@@ -863,6 +874,116 @@ document.addEventListener('DOMContentLoaded', () => {
             dateWiseTableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No pending data found for this date range.</td></tr>';
         }
         dateWiseGrandTotal.textContent = grandTotal;
+    });
+
+    // --- Total Order Report Logic ---
+    const generateTotalOrderBtn = document.getElementById('generateTotalOrderBtn');
+    const totalOrderStartDate = document.getElementById('totalOrderStartDate');
+    const totalOrderEndDate = document.getElementById('totalOrderEndDate');
+    const totalOrderThead = document.getElementById('totalOrderThead');
+    const totalOrderTbody = document.getElementById('totalOrderTbody');
+    const totalOrderFooter = document.getElementById('totalOrderFooter');
+
+    generateTotalOrderBtn.addEventListener('click', () => {
+        const start = totalOrderStartDate.value;
+        const end = totalOrderEndDate.value;
+
+        if (!start || !end) {
+            alert("Please select both Start Date and End Date");
+            return;
+        }
+
+        // Filter rows by Order Date range
+        const filtered = tableData.filter(row => {
+            if (!row.orderDate) return false;
+            return row.orderDate >= start && row.orderDate <= end;
+        });
+
+        if (filtered.length === 0) {
+            totalOrderThead.innerHTML = '';
+            totalOrderTbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">No data found for this Order Date range.</td></tr>';
+            totalOrderFooter.innerHTML = '';
+            return;
+        }
+
+        // Collect unique Design Nos (rows) and Platforms (columns)
+        const designSet = new Set();
+        const platformSet = new Set();
+        filtered.forEach(row => {
+            if (row.designNo) designSet.add(row.designNo);
+            if (row.platform) platformSet.add(row.platform);
+        });
+
+        const designs = Array.from(designSet).sort();
+        const platforms = Array.from(platformSet).sort();
+
+        // Build pivot map: designNo -> platform -> count
+        const pivot = {};
+        designs.forEach(d => {
+            pivot[d] = {};
+            platforms.forEach(p => pivot[d][p] = 0);
+        });
+
+        filtered.forEach(row => {
+            const p = row.platform || '';
+            const d = row.designNo || '';
+            if (p && d && pivot[d] && pivot[d][p] !== undefined) {
+                pivot[d][p]++;
+            }
+        });
+
+        // Render Header: Design No | Platform1 | Platform2 | ... | Total
+        totalOrderThead.innerHTML = `
+            <tr>
+                <th>Design No</th>
+                ${platforms.map(p => `<th>${p}</th>`).join('')}
+                <th>Total</th>
+            </tr>
+        `;
+
+        // Render Body: each row = one Design No
+        totalOrderTbody.innerHTML = '';
+        const platformColTotals = {};
+        platforms.forEach(p => platformColTotals[p] = 0);
+        let grandTotal = 0;
+
+        designs.forEach(d => {
+            let rowTotal = 0;
+            const cells = platforms.map(p => {
+                const val = pivot[d][p];
+                platformColTotals[p] += val;
+                rowTotal += val;
+                return `<td>${val > 0 ? val : '-'}</td>`;
+            }).join('');
+            grandTotal += rowTotal;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td><strong>${d}</strong></td>${cells}<td><strong>${rowTotal}</strong></td>`;
+            totalOrderTbody.appendChild(tr);
+        });
+
+        // Render Footer (Grand Total row per platform column)
+        const footerCells = platforms.map(p => `<td>${platformColTotals[p]}</td>`).join('');
+        totalOrderFooter.innerHTML = `<td>Grand Total</td>${footerCells}<td>${grandTotal}</td>`;
+    });
+
+    // --- Total Order PDF Export ---
+    const exportTotalOrderPdfBtn = document.getElementById('exportTotalOrderPdfBtn');
+    exportTotalOrderPdfBtn.addEventListener('click', () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape' });
+        const start = totalOrderStartDate.value;
+        const end = totalOrderEndDate.value;
+        doc.text(`Total Order Report (${start} to ${end})`, 14, 15);
+        doc.autoTable({
+            html: '#totalOrderTable',
+            startY: 20,
+            theme: 'grid',
+            headStyles: { fillColor: [16, 185, 129] },
+            footStyles: { fillColor: [20, 20, 20], textColor: [255, 255, 255] },
+            styles: { fontSize: 9, cellPadding: 3 },
+        });
+        doc.save(`Total_Order_${start}_${end}.pdf`);
     });
 
     // --- PDF Export Logic ---
