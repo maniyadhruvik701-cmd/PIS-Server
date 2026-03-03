@@ -7,9 +7,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const currentUser = JSON.parse(currentUserRaw);
 
-    // Update Profile Name
+    // --- Role Check ---
+    const accessRole = localStorage.getItem('accessRole');
+    if (!accessRole) {
+        window.location.href = 'role-select.html';
+        return;
+    }
+
+    // Update Profile Name + Show Role Badge
     const userProfileName = document.querySelector('.user-profile span');
     if (userProfileName) userProfileName.textContent = currentUser.name;
+
+    // Show role badge next to name in header
+    const userProfile = document.querySelector('.user-profile');
+    if (userProfile && !document.getElementById('roleBadge')) {
+        const roleBadge = document.createElement('span');
+        roleBadge.id = 'roleBadge';
+        const roleLabels = { order: 'Order', fitting: 'Fitting', fullaccess: 'Full Access' };
+        const roleColors = { order: '#f59e0b', fitting: '#10b981', fullaccess: '#6366f1' };
+        roleBadge.textContent = roleLabels[accessRole] || accessRole;
+        roleBadge.style.cssText = `
+            font-size: 0.7rem; font-weight: 600; padding: 3px 10px;
+            border-radius: 50px; background: ${roleColors[accessRole] || '#6366f1'}22;
+            color: ${roleColors[accessRole] || '#6366f1'}; border: 1px solid ${roleColors[accessRole] || '#6366f1'}44;
+            margin-left: 6px; vertical-align: middle;
+        `;
+        userProfileName.after(roleBadge);
+    }
 
     // Logout Logic
     const logoutLink = document.querySelector('.logout a');
@@ -17,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutLink.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('currentUser');
+            localStorage.removeItem('accessRole');
             window.location.href = 'index.html';
         });
     }
@@ -226,6 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fittingName: '',
             finalDate: '', // Deadline
             receiveDate: '',
+            fittingReceiveDate: '',
             shipDate: ''
         };
     }
@@ -307,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </td>
             <td><input type="date" data-field="finalDate" value="${data.finalDate || ''}"></td>
             <td><input type="date" data-field="receiveDate" value="${data.receiveDate || ''}"></td>
+            <td><input type="date" data-field="fittingReceiveDate" value="${data.fittingReceiveDate || ''}"></td>
             <td><input type="date" data-field="shipDate" value="${data.shipDate || ''}"></td>
             <td style="text-align: center;">
                 <button class="delete-btn" title="Delete Row"><i class="fas fa-trash"></i></button>
@@ -1037,6 +1064,90 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPlatforms();
     loadFittings();
     loadFromLocalStorage();
+
+    // --- Role-Based Access Control ---
+    function applyRoleAccess() {
+        const role = localStorage.getItem('accessRole') || 'fullaccess';
+
+        // Column indices (0-based, thead th positions):
+        // 0:#, 1:OrderDate, 2:FittingOutDate(date), 3:OrderNo, 4:DesignNo,
+        // 5:BlouseSize, 6:Customize, 7:KotiSize, 8:KurtaSize,
+        // 9:Platform, 10:FittingName, 11:FinalDate,
+        // 12:FittingInDate(receiveDate), 13:FittingReceiveDate, 14:ShipDate, 15:Action
+
+        // Columns visible per role (always show #=0 and Action=15)
+        // 0:#, 1:OrderDate, 2:FittingOutDate, 3:OrderNo, 4:DesignNo,
+        // 5:BlouseSize, 6:Customize, 7:KotiSize, 8:KurtaSize,
+        // 9:Platform, 10:FittingName, 11:FinalDate,
+        // 12:FittingInDate, 13:FittingReceiveDate, 14:ShipDate, 15:Action
+        const roleColumns = {
+            order: new Set([0, 1, 14, 15]),             // ONLY: OrderDate + ShipDate
+            fitting: new Set([0, 2, 12, 13, 15]),         // ONLY: FittingOutDate + FittingInDate + FittingReceiveDate
+            fullaccess: null                                  // Show all
+        };
+
+        const visibleCols = roleColumns[role];
+
+        if (visibleCols === null) {
+            // Full access — show everything, all nav tabs
+            return;
+        }
+
+        // Hide/Show thead columns
+        const theadCells = document.querySelectorAll('#dataTable thead tr th');
+        theadCells.forEach((th, i) => {
+            th.style.display = visibleCols.has(i) ? '' : 'none';
+        });
+
+        // Patch createRowElement to hide cells — override renderTable via CSS injection
+        // We use col-index data attributes approach: inject a style tag
+        let styleTag = document.getElementById('roleAccessStyle');
+        if (!styleTag) {
+            styleTag = document.createElement('style');
+            styleTag.id = 'roleAccessStyle';
+            document.head.appendChild(styleTag);
+        }
+
+        // Build CSS to hide cells in tbody rows
+        // Each td in a row corresponds to column index
+        const totalCols = theadCells.length;
+        let cssRules = '';
+        for (let i = 0; i < totalCols; i++) {
+            if (!visibleCols.has(i)) {
+                // nth-child is 1-based
+                cssRules += `#dataTable tbody tr td:nth-child(${i + 1}) { display: none; }\n`;
+            }
+        }
+        styleTag.textContent = cssRules;
+
+        // Hide Report nav items for order/fitting roles (only full access gets reports)
+        if (role === 'order' || role === 'fitting') {
+            const reportsNavIds = ['navReports', 'navDateWise', 'navLatePis', 'navTotalOrder'];
+            reportsNavIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+        }
+
+        // Disable Add50 and ClearAll for non-full-access
+        if (role !== 'fullaccess') {
+            const add50 = document.getElementById('add50Btn');
+            const clearAll = document.getElementById('clearAllBtn');
+            if (add50) add50.style.display = 'none';
+            if (clearAll) clearAll.style.display = 'none';
+        }
+
+        // Hide Platform/Fitting management buttons for non-full-access
+        if (role !== 'fullaccess') {
+            const platBtn = document.getElementById('managePlatformsBtn');
+            const fitBtn = document.getElementById('manageFittingsBtn');
+            if (platBtn) platBtn.style.display = 'none';
+            if (fitBtn) fitBtn.style.display = 'none';
+        }
+    }
+
+    applyRoleAccess();
+
 
     // --- Platform Modal Logic ---
     const platformModal = document.getElementById('platformModal');
