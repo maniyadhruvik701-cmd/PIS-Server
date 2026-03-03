@@ -1120,13 +1120,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         styleTag.textContent = cssRules;
 
-        // Hide Report nav items for order/fitting roles (only full access gets reports)
+        // Hide some Report nav items for order/fitting roles (keep Total Pending visible)
         if (role === 'order' || role === 'fitting') {
-            const reportsNavIds = ['navReports', 'navDateWise', 'navLatePis', 'navTotalOrder'];
-            reportsNavIds.forEach(id => {
+            const hideNavIds = ['navDateWise', 'navLatePis', 'navTotalOrder'];
+            hideNavIds.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
+            // navReports (Total Pending) stays visible
         }
 
         // Disable Add50 and ClearAll for non-full-access
