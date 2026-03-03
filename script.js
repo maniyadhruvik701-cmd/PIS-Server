@@ -42,8 +42,8 @@ if (signinBtn) {
 			const adminUser = { name: "Admin", email: GLOBAL_ID };
 			localStorage.setItem('currentUser', JSON.stringify(adminUser));
 
-			// Redirect
-			window.location.href = 'dashboard.html';
+			// Redirect to role selection
+			window.location.href = 'role-select.html';
 		} else {
 			alert("Invalid ID or Password. Contact Admin.");
 		}
