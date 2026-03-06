@@ -1081,9 +1081,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // 9:Platform, 10:FittingName, 11:FinalDate,
         // 12:FittingInDate, 13:FittingReceiveDate, 14:ShipDate, 15:Action
         const roleColumns = {
-            order: new Set([0, 1, 14, 15]),             // ONLY: OrderDate + ShipDate
-            fitting: new Set([0, 2, 12, 13, 15]),         // ONLY: FittingOutDate + FittingInDate + FittingReceiveDate
-            fullaccess: null                                  // Show all
+            order: new Set([0, 1, 3, 4, 9, 14, 15]),             // OrderDate, OrderNo, DesignNo, Platform, ShipDate
+            fitting: new Set([0, 2, 3, 4, 9, 12, 13, 15]),       // FittingOutDate, OrderNo, DesignNo, Platform, FittingReceiveDate, FittingInDate
+            fullaccess: null                                     // Show all
         };
 
         const visibleCols = roleColumns[role];
