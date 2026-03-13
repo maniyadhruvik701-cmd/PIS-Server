@@ -712,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
                 // Determine if pending based on Fitting Receive Date (Empty or Null)
-                if (!row.fittingReceiveDate || row.fittingReceiveDate.trim() === '') {
+                if (!row.receiveDate || row.receiveDate.trim() === '') {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
@@ -814,7 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
                 // Check for empty Fitting Receive Date
-                if (!row.fittingReceiveDate || row.fittingReceiveDate.trim() === '') {
+                if (!row.receiveDate || row.receiveDate.trim() === '') {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
