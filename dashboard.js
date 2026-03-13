@@ -711,8 +711,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Determine if pending based on Receive Date (Empty or Null)
-                if (!row.receiveDate || row.receiveDate.trim() === '') {
+                // Determine if pending based on Fitting Receive Date (Empty or Null)
+                if (!row.fittingReceiveDate || row.fittingReceiveDate.trim() === '') {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
@@ -813,8 +813,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Check for empty Receive Date
-                if (!row.receiveDate || row.receiveDate.trim() === '') {
+                // Check for empty Fitting Receive Date
+                if (!row.fittingReceiveDate || row.fittingReceiveDate.trim() === '') {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
@@ -1082,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 12:FittingInDate, 13:FittingReceiveDate, 14:ShipDate, 15:Action
         const roleColumns = {
             order: new Set([0, 1, 3, 4, 9, 14, 15]),             // OrderDate, OrderNo, DesignNo, Platform, ShipDate
-            fitting: new Set([0, 2, 3, 4, 9, 12, 13, 15]),       // FittingOutDate, OrderNo, DesignNo, Platform, FittingReceiveDate, FittingInDate
+            fitting: new Set([0, 2, 3, 4, 9, 11, 12, 13, 15]),       // FittingOutDate, OrderNo, DesignNo, Platform, FinalDate, FittingReceiveDate, FittingInDate
             fullaccess: null                                     // Show all
         };
 
