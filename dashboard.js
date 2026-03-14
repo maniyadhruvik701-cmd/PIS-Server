@@ -108,12 +108,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateReportFilters() {
         const reportSelect = document.getElementById('reportFittingFilter');
         const dateWiseSelect = document.getElementById('dateWiseFittingFilter');
+        const fittingWiseSelect = document.getElementById('fittingWiseFittingFilter');
 
         const defaultOption = '<option value="">All Fittings</option>';
         const optionsHtml = fittingOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('');
 
         if (reportSelect) reportSelect.innerHTML = defaultOption + optionsHtml;
         if (dateWiseSelect) dateWiseSelect.innerHTML = defaultOption + optionsHtml;
+        if (fittingWiseSelect) fittingWiseSelect.innerHTML = defaultOption + optionsHtml;
     }
 
     // --- Data Management Functions ---
@@ -345,6 +347,23 @@ document.addEventListener('DOMContentLoaded', () => {
         inputs.forEach(input => {
             input.addEventListener('input', (e) => {
                 const field = e.target.getAttribute('data-field');
+
+                if (field === 'finalDate' && e.target.value) {
+                    const selectedDate = e.target.value;
+                    let count = 0;
+                    tableData.forEach(r => {
+                        if (r !== data && r.finalDate === selectedDate) {
+                            count++;
+                        }
+                    });
+
+                    if (count >= 9) {
+                        alert("Slot is full! You cannot add more than 9 orders for this final date.");
+                        e.target.value = data[field] || ''; // Revert to previous value
+                        return; // Prevent further execution
+                    }
+                }
+
                 data[field] = e.target.value; // Bind directly to the object reference
                 saveToLocalStorage(); // Auto-save on every keystroke/change
             });
@@ -462,12 +481,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const navLatePis = document.getElementById('navLatePis');
 
     const navTotalOrder = document.getElementById('navTotalOrder');
+    const navFittingWise = document.getElementById('navFittingWise');
 
     const dataSection = document.getElementById('dataSection');
     const reportsSection = document.getElementById('reportsSection');
     const dateWiseSection = document.getElementById('dateWiseSection');
     const latePisSection = document.getElementById('latePisSection');
     const totalOrderSection = document.getElementById('totalOrderSection');
+    const fittingWiseSection = document.getElementById('fittingWiseSection');
     const settingsSection = document.getElementById('settingsSection');
 
     // settings nav
@@ -480,6 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dateWiseSection.style.display = 'none';
         latePisSection.style.display = 'none';
         totalOrderSection.style.display = 'none';
+        fittingWiseSection.style.display = 'none';
         settingsSection.style.display = 'none';
 
         navData.classList.remove('active');
@@ -487,6 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
         navDateWise.classList.remove('active');
         navLatePis.classList.remove('active');
         navTotalOrder.classList.remove('active');
+        navFittingWise.classList.remove('active');
         navSettings.classList.remove('active');
 
         if (tab === 'data') {
@@ -504,6 +527,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (tab === 'totalorder') {
             totalOrderSection.style.display = 'flex';
             navTotalOrder.classList.add('active');
+        } else if (tab === 'fittingwise') {
+            fittingWiseSection.style.display = 'flex';
+            navFittingWise.classList.add('active');
         } else if (tab === 'settings') {
             settingsSection.style.display = 'flex';
             navSettings.classList.add('active');
@@ -515,12 +541,16 @@ document.addEventListener('DOMContentLoaded', () => {
     navDateWise.addEventListener('click', (e) => { e.preventDefault(); switchTab('datewise'); });
     navLatePis.addEventListener('click', (e) => { e.preventDefault(); switchTab('latepis'); });
     navTotalOrder.addEventListener('click', (e) => { e.preventDefault(); switchTab('totalorder'); });
+    navFittingWise.addEventListener('click', (e) => { e.preventDefault(); switchTab('fittingwise'); });
     navSettings.addEventListener('click', (e) => { e.preventDefault(); switchTab('settings'); });
 
     // --- Backup & Restore Logic ---
     const backupDataBtn = document.getElementById('backupDataBtn');
     const restoreDataBtn = document.getElementById('restoreDataBtn');
     const restoreDataInput = document.getElementById('restoreDataInput');
+    const copyToClipboardBtn = document.getElementById('copyToClipboardBtn');
+    const importFromPasteBtn = document.getElementById('importFromPasteBtn');
+    const copyPasteArea = document.getElementById('copyPasteArea');
 
     backupDataBtn.addEventListener('click', () => {
         const dataStr = JSON.stringify(tableData, null, 2);
@@ -566,6 +596,47 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsText(file);
         // Reset input so same file can be selected again if needed
         e.target.value = '';
+    });
+
+    copyToClipboardBtn.addEventListener('click', () => {
+        const dataStr = JSON.stringify(tableData, null, 2);
+        copyPasteArea.value = dataStr;
+        copyPasteArea.select();
+        try {
+            document.execCommand('copy');
+            alert("Data copied to clipboard!");
+        } catch (err) {
+            alert("Failed to copy. Please copy manually from the text box.");
+        }
+    });
+
+    importFromPasteBtn.addEventListener('click', () => {
+        const pasteData = copyPasteArea.value.trim();
+        if (!pasteData) {
+            alert("Please paste data in the text area first.");
+            return;
+        }
+
+        try {
+            const importedData = JSON.parse(pasteData);
+            if (Array.isArray(importedData)) {
+                if (confirm(`Do you want to completely OVERWRITE current data with ${importedData.length} entries?\n\nClick 'OK' to Overwrite.\nClick 'Cancel' to APPEND them to existing data.`)) {
+                    // Overwrite
+                    tableData = importedData;
+                } else {
+                    // Append
+                    tableData = tableData.concat(importedData);
+                }
+                saveToLocalStorage();
+                renderTable();
+                copyPasteArea.value = ''; // clear area after success
+                alert("Data imported successfully!");
+            } else {
+                alert("Invalid format: Data is not a JSON array.");
+            }
+        } catch (err) {
+            alert("Error parsing JSON: " + err.message);
+        }
     });
 
     // --- Late PIS Report Logic ---
@@ -1012,6 +1083,110 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.save(`Total_Order_${start}_${end}.pdf`);
     });
 
+    // --- Fitting Wise Report Logic ---
+    const generateFittingWiseBtn = document.getElementById('generateFittingWiseBtn');
+    const fittingWiseStartDate = document.getElementById('fittingWiseStartDate');
+    const fittingWiseEndDate = document.getElementById('fittingWiseEndDate');
+    const fittingWiseTbody = document.getElementById('fittingWiseTbody');
+    const fittingWiseGrandTotal = document.getElementById('fittingWiseGrandTotal');
+
+    generateFittingWiseBtn.addEventListener('click', () => {
+        const start = fittingWiseStartDate.value;
+        const end = fittingWiseEndDate.value;
+
+        if (!start || !end) {
+            alert("Please select both Start Date and End Date");
+            return;
+        }
+
+        const selectedFitting = document.getElementById('fittingWiseFittingFilter').value;
+        const reportMap = {};
+        let grandTotal = 0;
+
+        tableData.forEach(row => {
+            // Filter by Fitting In Date (fittingReceiveDate)
+            if (!row.fittingReceiveDate) return;
+            const filterDate = row.fittingReceiveDate;
+
+            if (filterDate >= start && filterDate <= end) {
+                const fittingName = row.fittingName || "Unknown Fitting";
+                const orderNo = row.orderNo || "-";
+                const designNo = row.designNo || "-";
+                const platform = row.platform || "-";
+
+                // Apply Fitting Name Filter
+                if (selectedFitting && fittingName !== selectedFitting) return;
+
+                // Group by OrderNo, DesignNo, Platform, FittingName, and FittingInDate
+                const key = `${orderNo}|${designNo}|${platform}|${fittingName}|${filterDate}`;
+
+                if (!reportMap[key]) {
+                    reportMap[key] = {
+                        orderNo,
+                        designNo,
+                        platform,
+                        fittingName,
+                        fittingInDate: filterDate,
+                        count: 0
+                    };
+                }
+
+                // Count 1 piece per row matching the date range
+                reportMap[key].count += 1;
+                grandTotal += 1;
+            }
+        });
+
+        // Render Table
+        fittingWiseTbody.innerHTML = '';
+        const keys = Object.keys(reportMap).sort();
+
+        keys.forEach(key => {
+            const data = reportMap[key];
+            
+            // Format Date to DD-MM-YYYY
+            const [year, month, day] = data.fittingInDate.split('-');
+            const formattedDate = `${day}-${month}-${year}`;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${data.orderNo}</td>
+                <td>${data.designNo}</td>
+                <td>${data.platform}</td>
+                <td>${data.fittingName}</td>
+                <td>${formattedDate}</td>
+                <td>${data.count}</td>
+            `;
+            fittingWiseTbody.appendChild(tr);
+        });
+
+        if (keys.length === 0 || grandTotal === 0) {
+            fittingWiseTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No data found for this date range.</td></tr>';
+        }
+
+        // Update Grand Total
+        fittingWiseGrandTotal.textContent = grandTotal;
+    });
+
+    // --- Fitting Wise PDF Export ---
+    const exportFittingWisePdfBtn = document.getElementById('exportFittingWisePdfBtn');
+    exportFittingWisePdfBtn.addEventListener('click', () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait' });
+        const start = fittingWiseStartDate.value;
+        const end = fittingWiseEndDate.value;
+        doc.text(`Fitting Wise Report (${start} to ${end})`, 14, 15);
+        doc.autoTable({
+            html: '#fittingWiseTable',
+            startY: 20,
+            theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246] }, // blue color
+            footStyles: { fillColor: [20, 20, 20], textColor: [255, 255, 255] },
+            styles: { fontSize: 10, cellPadding: 3 },
+        });
+        doc.save(`Fitting_Wise_${start}_${end}.pdf`);
+    });
+
     // --- PDF Export Logic ---
     const exportTotalPendingPdfBtn = document.getElementById('exportTotalPendingPdfBtn');
     const exportDateWisePdfBtn = document.getElementById('exportDateWisePdfBtn');
@@ -1122,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Hide some Report nav items for order/fitting roles (keep Total Pending visible)
         if (role === 'order' || role === 'fitting') {
-            const hideNavIds = ['navDateWise', 'navLatePis', 'navTotalOrder'];
+            const hideNavIds = ['navDateWise', 'navLatePis', 'navTotalOrder', 'navFittingWise'];
             hideNavIds.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
