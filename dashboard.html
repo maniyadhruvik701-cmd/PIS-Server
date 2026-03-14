@@ -53,6 +53,12 @@
                         <span>Total Order</span>
                     </a>
                 </li>
+                <li id="navFittingWise">
+                    <a href="#">
+                        <i class="fas fa-clipboard-check"></i>
+                        <span>Fitting Wise Report</span>
+                    </a>
+                </li>
                 <li id="navSettings">
                     <a href="#">
                         <i class="fas fa-cogs"></i>
@@ -322,6 +328,56 @@
                 </div>
             </div>
 
+            <!-- Fitting Wise Report Section (Hidden by default) -->
+            <div class="reports-container" id="fittingWiseSection" style="display: none;">
+                <h2 style="margin-bottom: 20px;">Fitting Wise Report</h2>
+                <div class="report-controls">
+                    <div class="date-group">
+                        <label>Start Date (Fitting In):</label>
+                        <input type="date" id="fittingWiseStartDate">
+                    </div>
+                    <div class="date-group">
+                        <label>End Date (Fitting In):</label>
+                        <input type="date" id="fittingWiseEndDate">
+                    </div>
+                    <div class="date-group">
+                        <label>Fitting:</label>
+                        <select id="fittingWiseFittingFilter"
+                            style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">All Fittings</option>
+                        </select>
+                    </div>
+                    <button id="generateFittingWiseBtn" class="btn-primary"><i class="fas fa-search"></i> Generate
+                        Report</button>
+                    <button id="exportFittingWisePdfBtn" class="btn-secondary" style="background: #ef4444;"><i
+                            class="fas fa-file-pdf"></i> Export PDF</button>
+                </div>
+
+                <div class="report-table-wrapper" style="overflow-x: auto;" id="fittingWiseTableWrapper">
+                    <table id="fittingWiseTable" style="width: 80%; margin: 0 auto;">
+                        <thead>
+                            <tr>
+                                <th>Order No</th>
+                                <th>Design No</th>
+                                <th>Platform</th>
+                                <th>Fitting Name</th>
+                                <th>Fitting In Date</th>
+                                <th>Total Pieces</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fittingWiseTbody">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: rgba(0, 198, 255, 0.2); font-weight: bold;">
+                                <td colspan="5" style="text-align: left; padding-left: 10px;">Grand Total</td>
+                                <td id="fittingWiseGrandTotal">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
             <!-- Settings Section (Hidden by default) -->
             <div class="reports-container" id="settingsSection" style="display: none;">
                 <h2 style="margin-bottom: 20px;">Settings & Data Sync</h2>
@@ -341,6 +397,23 @@
                             <input type="file" id="restoreDataInput" style="display: none;" accept=".json">
                             <button id="restoreDataBtn" class="btn-secondary"><i class="fas fa-upload"></i> Restore
                                 Data</button>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 30px;">Quick JSON Copy & Paste</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 15px;">
+                        Copy your JSON data to paste elsewhere, or paste JSON data to import. You can either append or
+                        overwrite.
+                    </p>
+                    <div class="date-group" style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
+                        <textarea id="copyPasteArea"
+                            style="width: 100%; min-height: 150px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;"
+                            placeholder="Paste JSON data here to restore..."></textarea>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="copyToClipboardBtn" class="btn-primary" style="background-color: #3b82f6;"><i
+                                    class="fas fa-copy"></i> Copy to Clipboard</button>
+                            <button id="importFromPasteBtn" class="btn-secondary" style="background-color: #10b981;"><i
+                                    class="fas fa-paste"></i> Import Pasted Data</button>
                         </div>
                     </div>
 
