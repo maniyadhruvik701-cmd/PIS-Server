@@ -221,9 +221,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (storedData) {
             tableData = JSON.parse(storedData);
+            // Load saved page or default to last page
+            const savedPage = localStorage.getItem('pis_current_page');
+            const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
+            if (savedPage) {
+                currentPage = Math.min(parseInt(savedPage), totalPages);
+            } else {
+                currentPage = totalPages;
+            }
         } else {
             tableData = [];
             tableData.push(addNewEntryObject());
+            currentPage = 1;
         }
         renderTable();
     }
@@ -231,6 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveToLocalStorage() {
         // 1. Save Local
         localStorage.setItem(DATA_KEY, JSON.stringify(tableData));
+        localStorage.setItem('pis_current_page', currentPage);
 
         // 2. Sync to Cloud (if connected)
         if (isFirebaseConnected && dbRef) {
@@ -264,14 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < count; i++) {
             tableData.push(addNewEntryObject());
         }
+        
+        // After adding new rows, jump to the last page to see them
+        const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
+        currentPage = totalPages;
+        
         saveToLocalStorage();
-        // If adding many rows, maybe jump to the last page? Or stay current.
-        // Let's stay on current unless we were on the last page.
-        const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE);
-        if (currentPage < totalPages && currentPage !== 1) {
-            // Optional: Move to last page if user wants to see new entries immediately
-            // currentPage = totalPages; 
-        }
         renderTable();
     }
 
@@ -367,6 +375,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 data[field] = e.target.value; // Bind directly to the object reference
                 saveToLocalStorage(); // Auto-save on every keystroke/change
             });
+
+            // Duplicate entry check on 'blur' event
+            if (input.getAttribute('data-field') === 'orderNo' || input.getAttribute('data-field') === 'designNo') {
+                input.addEventListener('blur', function() {
+                    const orderNo = (data.orderNo || '').toString().trim();
+                    const designNo = (data.designNo || '').toString().trim();
+
+                    // Only check if both fields are filled
+                    if (orderNo && designNo) {
+                        const exists = tableData.some(r => 
+                            r !== data && 
+                            (r.orderNo || '').toString().trim().toLowerCase() === orderNo.toLowerCase() && 
+                            (r.designNo || '').toString().trim().toLowerCase() === designNo.toLowerCase()
+                        );
+
+                        if (exists) {
+                            // Small delay to ensure blur process completes
+                            setTimeout(() => {
+                                if (!confirm("entry is already exist do you want a new entry")) {
+                                    deleteRow(data); // Deletes the entire row
+                                }
+                            }, 10);
+                        }
+                    }
+                });
+            }
         });
 
         // Event Listener for Delete
@@ -428,6 +462,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update Buttons
         prevBtn.disabled = currentPage === 1;
         nextBtn.disabled = currentPage === totalPages;
+
+        // Remember current page in localStorage
+        localStorage.setItem('pis_current_page', currentPage);
     }
 
     // --- Pagination Logic ---
