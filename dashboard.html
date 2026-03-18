@@ -59,6 +59,18 @@
                         <span>Fitting Wise Report</span>
                     </a>
                 </li>
+                <li id="navFittingOutReport">
+                    <a href="#">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Fitting Out Report</span>
+                    </a>
+                </li>
+                <li id="navPermissions" style="display: none;">
+                    <a href="#">
+                        <i class="fas fa-user-shield"></i>
+                        <span>User Permissions</span>
+                    </a>
+                </li>
                 <li id="navSettings">
                     <a href="#">
                         <i class="fas fa-cogs"></i>
@@ -67,7 +79,7 @@
                 </li>
             </ul>
             <div class="logout">
-                <a href="index.html">
+                <a href="#" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -77,7 +89,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <header>
-                <h1>Entry Data</h1>
+                <h1 id="pageTitle">Entry Data</h1>
                 <div class="user-profile">
                     <span>Admin User</span>
                     <div class="avatar"><i class="fas fa-user"></i></div>
@@ -98,6 +110,10 @@
                         <div class="search-box">
                             <i class="fas fa-search"></i>
                             <input type="text" id="searchInput" placeholder="Search data...">
+                        </div>
+                        <div class="range-delete-box" style="display: flex; gap: 5px; align-items: center; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 4px 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                            <input type="text" id="deleteRangeInput" placeholder="Ex: 300-400" style="background: transparent; border: none; color: #fff; width: 80px; font-size: 0.85rem; outline: none; padding: 4px;">
+                            <button id="deleteRangeBtn" class="btn-danger" style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px;"><i class="fas fa-trash"></i> Delete</button>
                         </div>
                         <button id="clearAllBtn" class="btn-danger"><i class="fas fa-trash-alt"></i> Clear All</button>
                     </div>
@@ -122,6 +138,7 @@
                                 <th>Fitting Receive Date</th>
                                 <th>Fitting In Date</th>
                                 <th>Ship Date</th>
+                                <th>User</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -294,6 +311,36 @@
             </div>
 
             <!-- Total Order Section (Hidden by default) -->
+            <!-- User Permissions Section (Visible only to admins) -->
+            <div class="reports-container" id="permissionsSection" style="display: none;">
+                <div class="table-header-controls">
+                    <div class="left-controls">
+                        <h2>User Access Management</h2>
+                        <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">Select specific dashboard sections and reports for each user</p>
+                    </div>
+                </div>
+                
+                <div class="table-container" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; padding: 0; overflow-x: auto;">
+                    <table class="report-table" id="permissionsTable" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: rgba(255, 255, 255, 0.05);" id="permissionsHeaderRow">
+                                <th style="padding: 20px; text-align: left; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255, 255, 255, 0.6); border-bottom: 1px solid rgba(255, 255, 255, 0.1); position: sticky; left: 0; background: #1a1a2e; z-index: 2;">Permission Name</th>
+                                <!-- User Names will be injected here if needed, or kept static -->
+                                <th style="padding: 15px; text-align: center; color: #fff; min-width: 100px;">Amish</th>
+                                <th style="padding: 15px; text-align: center; color: #fff; min-width: 100px;">Arshit</th>
+                                <th style="padding: 15px; text-align: center; color: #fff; min-width: 100px;">Manager</th>
+                                <th style="padding: 15px; text-align: center; color: #fff; min-width: 100px;">Radhi</th>
+                                <th style="padding: 15px; text-align: center; color: #fff; min-width: 100px;">Vruti</th>
+                                <th style="padding: 15px; text-align: center; color: #fff; min-width: 100px;">Bhumi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userPermissionsTableBody">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="reports-container" id="totalOrderSection" style="display: none;">
                 <h2 style="margin-bottom: 20px;">Total Order</h2>
                 <div class="report-controls">
@@ -373,6 +420,42 @@
                                 <td colspan="5" style="text-align: left; padding-left: 10px;">Grand Total</td>
                                 <td id="fittingWiseGrandTotal">0</td>
                             </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Fitting Out Report Section -->
+            <div class="reports-container" id="fittingOutReportSection" style="display: none;">
+                <div class="table-header-controls">
+                    <div class="left-controls">
+                        <h2>Fitting Out Report</h2>
+                        <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">Analyze items by Fitting Out Date (Platform vs Design No)</p>
+                    </div>
+                </div>
+
+                <div class="report-controls">
+                    <div class="date-group">
+                        <label>Start Date:</label>
+                        <input type="date" id="fittingOutStartDate">
+                    </div>
+                    <div class="date-group">
+                        <label>End Date:</label>
+                        <input type="date" id="fittingOutEndDate">
+                    </div>
+                    <button id="generateFittingOutBtn" class="btn-primary"><i class="fas fa-search"></i> Generate Report</button>
+                </div>
+
+                <div class="report-table-wrapper" style="overflow-x: auto; margin-top: 20px;">
+                    <table id="fittingOutReportTable" style="width: 100%; border-collapse: collapse;">
+                        <thead id="fittingOutReportHead">
+                            <!-- Injected via JS -->
+                        </thead>
+                        <tbody id="fittingOutReportBody">
+                            <!-- Injected via JS -->
+                        </tbody>
+                        <tfoot id="fittingOutReportFoot">
+                            <!-- Injected via JS -->
                         </tfoot>
                     </table>
                 </div>
