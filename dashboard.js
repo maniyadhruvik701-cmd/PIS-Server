@@ -286,8 +286,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function addNewEntryObject() {
         const today = new Date().toISOString().split('T')[0];
         return {
-            date: today,
-            orderDate: '',
+            date: '', // Fitting Out Date - make it empty by default
+            orderDate: today, // Order Date - default to today
             orderNo: '',
             designNo: '',
             blouseSize: '',
@@ -347,6 +347,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let searchQuery = '';
 
+    function formatDateForDisplay(isoDate) {
+        if (!isoDate) return '';
+        const parts = isoDate.split('-');
+        if (parts.length !== 3) return isoDate;
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+
     function createRowElement(data, displayIndex) {
         // Calculate globalRowIndex just for display purposes (optional)
         // If we want the serial number to be 1, 2, 3... of the filtered list, use displayIndex
@@ -388,10 +395,38 @@ document.addEventListener('DOMContentLoaded', () => {
         // Event Listeners for Inputs (Data Binding)
         const inputs = row.querySelectorAll('input, select');
         inputs.forEach(input => {
-            input.addEventListener('input', (e) => {
-                const field = e.target.getAttribute('data-field');
+            const field = input.getAttribute('data-field');
+            const isDateField = ['date', 'orderDate', 'finalDate', 'receiveDate', 'fittingReceiveDate', 'shipDate'].includes(field);
 
-                if (field === 'finalDate' && e.target.value) {
+            // Special handling for date fields for dd-mm-yyyy display
+            if (isDateField) {
+                // Initial display state
+                const originalType = input.type;
+                input.type = 'text';
+                input.placeholder = 'dd-mm-yyyy';
+                if (data[field]) {
+                    input.value = formatDateForDisplay(data[field]);
+                }
+
+                input.addEventListener('focus', function() {
+                    this.type = 'date';
+                    this.value = data[field] || '';
+                    if (this.showPicker) {
+                        // Small delay to ensure type change is processed
+                        setTimeout(() => this.showPicker(), 10);
+                    }
+                });
+
+                input.addEventListener('blur', function() {
+                    this.type = 'text';
+                    this.value = formatDateForDisplay(data[field]);
+                });
+            }
+
+            input.addEventListener('input', (e) => {
+                const targetField = e.target.getAttribute('data-field');
+
+                if (targetField === 'finalDate' && e.target.value) {
                     const selectedDate = e.target.value;
                     let count = 0;
                     tableData.forEach(r => {
@@ -402,17 +437,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (count >= 9) {
                         alert("Slot is full! You cannot add more than 9 orders for this final date.");
-                        e.target.value = data[field] || ''; // Revert to previous value
+                        e.target.value = data[targetField] || ''; // Revert to previous value
                         return; // Prevent further execution
                     }
                 }
 
-                data[field] = e.target.value; // Bind directly to the object reference
+                data[targetField] = e.target.value; // Bind directly to the object reference
                 saveToLocalStorage(); // Auto-save on every keystroke/change
             });
 
             // Duplicate entry check on 'blur' event
-            if (input.getAttribute('data-field') === 'orderNo' || input.getAttribute('data-field') === 'designNo') {
+            if (field === 'orderNo' || field === 'designNo') {
                 input.addEventListener('blur', function() {
                     const orderNo = (data.orderNo || '').toString().trim();
                     const designNo = (data.designNo || '').toString().trim();
@@ -1328,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 9:Platform, 10:FittingName, 11:FinalDate,
         // 12:FittingInDate, 13:FittingReceiveDate, 14:ShipDate, 15:Action
         const roleColumns = {
-            order: new Set([0, 1, 3, 4, 9, 14, 15]),             // OrderDate, OrderNo, DesignNo, Platform, ShipDate
+            order: new Set([0, 1, 2, 3, 4, 9, 14, 15]),             // Added 2: Fitting Out Date
             fitting: new Set([0, 2, 3, 4, 9, 11, 12, 13, 15]),       // FittingOutDate, OrderNo, DesignNo, Platform, FinalDate, FittingReceiveDate, FittingInDate
             fullaccess: null                                     // Show all
         };
