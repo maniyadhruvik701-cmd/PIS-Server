@@ -366,9 +366,9 @@ document.addEventListener('DOMContentLoaded', () => {
             tableData.push(addNewEntryObject());
         }
         
-        // After adding new rows, jump to the last page to see them
-        const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
-        currentPage = totalPages;
+        // After adding new rows, since we show newest first, 
+        // they will appear at the top of Page 1.
+        currentPage = 1;
         
         saveToLocalStorage();
         renderTable();
@@ -550,24 +550,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderTable() {
         // Clear current table body
+        if (!tableBody) return;
         tableBody.innerHTML = '';
 
-        // 1. Filter Data
-        let displayData = tableData;
+        // 1. Map data with original Sr. No. (1-based index) and then reverse
+        // This ensures the latest entries are shown first while preserving their true ID
+        let displayData = tableData.map((row, idx) => ({ 
+            ...row, 
+            _originalIdx: idx,
+            _srNo: idx + 1 
+        }));
+
+        // 2. Apply Search Filter if any
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
-            displayData = tableData.filter(row => {
+            displayData = displayData.filter(row => {
                 return (
-                    (row.orderNo && row.orderNo.toLowerCase().includes(query)) ||
-                    (row.designNo && row.designNo.toLowerCase().includes(query)) ||
+                    (row.orderNo && row.orderNo.toString().toLowerCase().includes(query)) ||
+                    (row.designNo && row.designNo.toString().toLowerCase().includes(query)) ||
                     (row.platform && row.platform.toLowerCase().includes(query)) ||
                     (row.fittingName && row.fittingName.toLowerCase().includes(query)) ||
-                    (row.blouseSize && row.blouseSize.toLowerCase().includes(query)) ||
+                    (row.blouseSize && row.blouseSize.toString().toLowerCase().includes(query)) ||
                     (row.customize && row.customize.toLowerCase().includes(query)) ||
-                    (row.date && row.date.includes(query)) // Date string YYYY-MM-DD
+                    (row.date && row.date.includes(query))
                 );
             });
         }
+
+        // 3. Reverse the order to show last (newest) entries first
+        displayData.reverse();
 
         const totalRows = displayData.length;
         const totalPages = Math.ceil(totalRows / ROWS_PER_PAGE) || 1;
@@ -580,10 +591,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const start = (currentPage - 1) * ROWS_PER_PAGE;
         const end = Math.min(start + ROWS_PER_PAGE, totalRows);
 
-        // Loop through the slice and create row elements
+        // 4. Render the current page slice
         for (let i = start; i < end; i++) {
-            // displayData[i] is the object. "i" is the index in the FILTERED list (for this page slice context, but we want continuous count)
-            const rowElement = createRowElement(displayData[i], i);
+            const item = displayData[i];
+            // Use item._srNo - 1 as the index for createRowElement so the Sr No column is correct
+            const rowElement = createRowElement(item, item._srNo - 1);
             tableBody.appendChild(rowElement);
         }
 
