@@ -87,6 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function savePlatforms() {
         localStorage.setItem('pis_platforms', JSON.stringify(platformOptions));
+        // Sync to cloud
+        if (isFirebaseConnected && firebase.database) {
+            firebase.database().ref('pis_platforms').set(platformOptions).catch(err => console.error("Cloud Platform Save Error:", err));
+        }
     }
 
     function loadFittings() {
@@ -103,6 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveFittings() {
         localStorage.setItem('pis_fittings', JSON.stringify(fittingOptions));
         populateReportFilters();
+        // Sync to cloud
+        if (isFirebaseConnected && firebase.database) {
+            firebase.database().ref('pis_fittings').set(fittingOptions).catch(err => console.error("Cloud Fitting Save Error:", err));
+        }
     }
 
     function populateReportFilters() {
@@ -161,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateFirebaseStatus('connected');
                     isFirebaseConnected = true;
 
-                    // --- Realtime Listener ---
+                    // --- Global Data Listener ---
                     dbRef.on('value', (snapshot) => {
                         const data = snapshot.val();
                         if (data && Array.isArray(data)) {
@@ -172,7 +180,34 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
                                 if (currentPage > totalPages) currentPage = totalPages;
                                 renderTable();
-                                console.log("☁️ Synced from Cloud (Updated)");
+                                console.log("☁️ Data Synced from Cloud");
+                            }
+                        }
+                    });
+
+                    // --- Platforms Listener ---
+                    database.ref('pis_platforms').on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data && Array.isArray(data)) {
+                            if (JSON.stringify(data) !== JSON.stringify(platformOptions)) {
+                                platformOptions = data;
+                                localStorage.setItem('pis_platforms', JSON.stringify(platformOptions));
+                                renderTable();
+                                console.log("☁️ Platforms Synced from Cloud");
+                            }
+                        }
+                    });
+
+                    // --- Fittings Listener ---
+                    database.ref('pis_fittings').on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data && Array.isArray(data)) {
+                            if (JSON.stringify(data) !== JSON.stringify(fittingOptions)) {
+                                fittingOptions = data;
+                                localStorage.setItem('pis_fittings', JSON.stringify(fittingOptions));
+                                populateReportFilters();
+                                renderTable();
+                                console.log("☁️ Fittings Synced from Cloud");
                             }
                         }
                     });
@@ -1332,14 +1367,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         styleTag.textContent = cssRules;
 
-        // Hide some Report nav items for order/fitting roles (keep Total Pending visible)
+        // Hide some Report nav items for order/fitting roles
         if (role === 'order' || role === 'fitting') {
-            const hideNavIds = ['navDateWise', 'navLatePis', 'navTotalOrder', 'navFittingWise'];
+            let hideNavIds = ['navDateWise', 'navLatePis', 'navTotalOrder', 'navFittingWise'];
+            
+            // If role is 'order', we WANT to see the Total Order report because it shows Platform data
+            if (role === 'order') {
+                hideNavIds = ['navDateWise', 'navLatePis', 'navFittingWise']; // Keep 'navTotalOrder'
+            }
+
             hideNavIds.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
-            // navReports (Total Pending) stays visible
         }
 
         // Disable Add50 and ClearAll for non-full-access
