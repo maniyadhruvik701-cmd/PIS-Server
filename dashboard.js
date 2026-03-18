@@ -7,6 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const currentUser = JSON.parse(currentUserRaw);
 
+    // Force redirection to role-select on refresh by clearing role session
+    // (User requested: refresh kare etle user select j khule)
+    const isInitialLogin = sessionStorage.getItem('pis_session_active');
+    if (!isInitialLogin) {
+        localStorage.removeItem('accessRole');
+        localStorage.removeItem('activeUserId');
+        localStorage.removeItem('activeUserName');
+        window.location.href = 'role-select.html';
+        return;
+    }
+    // Mark session as active so they can navigate tabs, but refresh still triggers above
+    sessionStorage.removeItem('pis_session_active'); 
+
     // --- Role Check ---
     const accessRole = localStorage.getItem('accessRole');
     if (!accessRole) {
@@ -15,8 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Update Profile Name + Show Role Badge
+    const activeUserName = localStorage.getItem('activeUserName') || currentUser.name;
     const userProfileName = document.querySelector('.user-profile span');
-    if (userProfileName) userProfileName.textContent = currentUser.name;
+    if (userProfileName) userProfileName.textContent = activeUserName;
 
     // Show role badge next to name in header
     const userProfile = document.querySelector('.user-profile');
@@ -36,14 +50,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Logout Logic
-    const logoutLink = document.querySelector('.logout a');
-    if (logoutLink) {
-        logoutLink.addEventListener('click', (e) => {
-            e.preventDefault();
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('currentUser');
             localStorage.removeItem('accessRole');
+            localStorage.removeItem('activeUserId');
+            localStorage.removeItem('activeUserName');
+            sessionStorage.removeItem('pis_session_active');
             window.location.href = 'index.html';
         });
+    }
+
+    function showSection(sectionToShow, activeNav) {
+        sections.forEach(s => { if (s) s.style.display = 'none'; });
+        navs.forEach(n => { if (n) n.classList.remove('active'); });
+
+        if (sectionToShow) {
+            sectionToShow.style.display = (sectionToShow === dataSection) ? 'flex' : 'block';
+        }
+        if (activeNav) {
+            activeNav.classList.add('active');
+            // Update page title based on nav text
+            const pageTitle = document.getElementById('pageTitle');
+            if (pageTitle) {
+                const navText = activeNav.querySelector('span') ? activeNav.querySelector('span').textContent : activeNav.textContent;
+                pageTitle.textContent = navText.trim();
+            }
+        }
+
+        // Refresh dynamic content
+        if (sectionToShow === dataSection) {
+            renderTable();
+        } else if (sectionToShow === permissionsSection) {
+            renderPermissionsTable();
+        }
     }
 
     // Global Data Key (Shared by all who have the admin password)
@@ -211,6 +252,20 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
                     });
+
+                    // --- User Permissions Listener ---
+                    database.ref('user_permissions').on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            userPermissions = data;
+                            // Update UI layout immediately when permissions change
+                            applyRoleAccess();
+                            
+                            if (document.getElementById('permissionsSection').style.display !== 'none') {
+                                renderPermissionsTable();
+                            }
+                        }
+                    });
                 })
                 .catch((error) => {
                     console.error("Auth Error:", error);
@@ -299,7 +354,8 @@ document.addEventListener('DOMContentLoaded', () => {
             finalDate: '', // Deadline
             receiveDate: '',
             fittingReceiveDate: '',
-            shipDate: ''
+            shipDate: '',
+            updatedBy: localStorage.getItem('activeUserName') || ''
         };
     }
 
@@ -387,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><input type="date" data-field="receiveDate" value="${data.receiveDate || ''}"></td>
             <td><input type="date" data-field="fittingReceiveDate" value="${data.fittingReceiveDate || ''}"></td>
             <td><input type="date" data-field="shipDate" value="${data.shipDate || ''}"></td>
+            <td style="font-size: 0.8rem; color: rgba(255,255,255,0.6); vertical-align: middle;" class="row-user-name">${data.updatedBy || ''}</td>
             <td style="text-align: center;">
                 <button class="delete-btn" title="Delete Row"><i class="fas fa-trash"></i></button>
             </td>
@@ -443,6 +500,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 data[targetField] = e.target.value; // Bind directly to the object reference
+                
+                // Track who updated this row
+                const activeUserName = localStorage.getItem('activeUserName') || 'Unknown';
+                data.updatedBy = activeUserName;
+                const userCell = row.querySelector('.row-user-name');
+                if (userCell) userCell.textContent = activeUserName;
+                
                 saveToLocalStorage(); // Auto-save on every keystroke/change
             });
 
@@ -563,6 +627,46 @@ document.addEventListener('DOMContentLoaded', () => {
     add50Btn.addEventListener('click', () => addRows(50));
     clearAllBtn.addEventListener('click', clearAll);
 
+    // --- Delete Range Logic ---
+    const deleteRangeBtn = document.getElementById('deleteRangeBtn');
+    const deleteRangeInput = document.getElementById('deleteRangeInput');
+    if (deleteRangeBtn) {
+        deleteRangeBtn.addEventListener('click', () => {
+            const rangeStr = deleteRangeInput.value.trim();
+            if (!rangeStr.includes('-')) {
+                alert("Please enter range in format: Start-End (Ex: 300-400)");
+                return;
+            }
+
+            const parts = rangeStr.split('-');
+            const startSr = parseInt(parts[0].trim());
+            const endSr = parseInt(parts[1].trim());
+
+            if (isNaN(startSr) || isNaN(endSr) || startSr <= 0 || endSr < startSr) {
+                alert("Please enter a valid range (Ex: 300-400)");
+                return;
+            }
+
+            if (endSr > tableData.length) {
+                alert(`Range exceeds total entries (${tableData.length})`);
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete entries from Sr No ${startSr} to ${endSr}?`)) {
+                // Sr No 300 is at index 299
+                const startIdx = startSr - 1;
+                const count = endSr - startIdx;
+                
+                tableData.splice(startIdx, count);
+                
+                saveToLocalStorage();
+                renderTable();
+                deleteRangeInput.value = '';
+                alert(`Successfully deleted ${count} entries.`);
+            }
+        });
+    }
+
     prevBtn.addEventListener('click', () => changePage(-1));
     nextBtn.addEventListener('click', () => changePage(1));
 
@@ -581,14 +685,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Tab Switching Logic ---
+    // --- Tab Switching Logic (Unified) ---
     const navData = document.getElementById('navData');
     const navReports = document.getElementById('navReports');
     const navDateWise = document.getElementById('navDateWise');
     const navLatePis = document.getElementById('navLatePis');
-
     const navTotalOrder = document.getElementById('navTotalOrder');
     const navFittingWise = document.getElementById('navFittingWise');
+    const navFittingOutReport = document.getElementById('navFittingOutReport');
+    const navPermissions = document.getElementById('navPermissions');
+    const navSettings = document.getElementById('navSettings');
 
     const dataSection = document.getElementById('dataSection');
     const reportsSection = document.getElementById('reportsSection');
@@ -596,60 +702,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const latePisSection = document.getElementById('latePisSection');
     const totalOrderSection = document.getElementById('totalOrderSection');
     const fittingWiseSection = document.getElementById('fittingWiseSection');
+    const fittingOutReportSection = document.getElementById('fittingOutReportSection');
+    const permissionsSection = document.getElementById('permissionsSection');
     const settingsSection = document.getElementById('settingsSection');
 
-    // settings nav
-    const navSettings = document.getElementById('navSettings');
+    const sections = [dataSection, reportsSection, dateWiseSection, latePisSection, totalOrderSection, fittingWiseSection, fittingOutReportSection, permissionsSection, settingsSection];
+    const navs = [navData, navReports, navDateWise, navLatePis, navTotalOrder, navFittingWise, navFittingOutReport, navPermissions, navSettings];
 
-    function switchTab(tab) {
-        // Reset all
-        dataSection.style.display = 'none';
-        reportsSection.style.display = 'none';
-        dateWiseSection.style.display = 'none';
-        latePisSection.style.display = 'none';
-        totalOrderSection.style.display = 'none';
-        fittingWiseSection.style.display = 'none';
-        settingsSection.style.display = 'none';
+    // Global Permissions State
+    let userPermissions = {};
+    const ALL_USERS = [
+        { id: 'vishal', name: 'Vishal' }, { id: 'piyush', name: 'Piyush' },
+        { id: 'amish', name: 'Amish' }, { id: 'arshit', name: 'Arshit' },
+        { id: 'manager', name: 'Manager' }, { id: 'radhi', name: 'Radhi' },
+        { id: 'vruti', name: 'Vruti' }, { id: 'bhumi', name: 'Bhumi' }
+    ];
 
-        navData.classList.remove('active');
-        navReports.classList.remove('active');
-        navDateWise.classList.remove('active');
-        navLatePis.classList.remove('active');
-        navTotalOrder.classList.remove('active');
-        navFittingWise.classList.remove('active');
-        navSettings.classList.remove('active');
+    function showSection(sectionToShow, activeNav) {
+        sections.forEach(s => { if (s) s.style.display = 'none'; });
+        navs.forEach(n => { if (n) n.classList.remove('active'); });
 
-        if (tab === 'data') {
-            dataSection.style.display = 'flex';
-            navData.classList.add('active');
-        } else if (tab === 'reports') {
-            reportsSection.style.display = 'flex';
-            navReports.classList.add('active');
-        } else if (tab === 'datewise') {
-            dateWiseSection.style.display = 'flex';
-            navDateWise.classList.add('active');
-        } else if (tab === 'latepis') {
-            latePisSection.style.display = 'flex';
-            navLatePis.classList.add('active');
-        } else if (tab === 'totalorder') {
-            totalOrderSection.style.display = 'flex';
-            navTotalOrder.classList.add('active');
-        } else if (tab === 'fittingwise') {
-            fittingWiseSection.style.display = 'flex';
-            navFittingWise.classList.add('active');
-        } else if (tab === 'settings') {
-            settingsSection.style.display = 'flex';
-            navSettings.classList.add('active');
+        if (sectionToShow) {
+            // Data section uses flex for layout
+            sectionToShow.style.display = (sectionToShow === dataSection) ? 'flex' : 'block';
+        }
+        if (activeNav) activeNav.classList.add('active');
+
+        // Refresh dynamic content
+        if (sectionToShow === dataSection) {
+            renderTable();
+        } else if (sectionToShow === permissionsSection) {
+            renderPermissionsTable();
         }
     }
 
-    navData.addEventListener('click', (e) => { e.preventDefault(); switchTab('data'); });
-    navReports.addEventListener('click', (e) => { e.preventDefault(); switchTab('reports'); });
-    navDateWise.addEventListener('click', (e) => { e.preventDefault(); switchTab('datewise'); });
-    navLatePis.addEventListener('click', (e) => { e.preventDefault(); switchTab('latepis'); });
-    navTotalOrder.addEventListener('click', (e) => { e.preventDefault(); switchTab('totalorder'); });
-    navFittingWise.addEventListener('click', (e) => { e.preventDefault(); switchTab('fittingwise'); });
-    navSettings.addEventListener('click', (e) => { e.preventDefault(); switchTab('settings'); });
+    if (navData) navData.addEventListener('click', () => showSection(dataSection, navData));
+    if (navReports) navReports.addEventListener('click', () => showSection(reportsSection, navReports));
+    if (navDateWise) navDateWise.addEventListener('click', () => showSection(dateWiseSection, navDateWise));
+    if (navLatePis) navLatePis.addEventListener('click', () => showSection(latePisSection, navLatePis));
+    if (navTotalOrder) navTotalOrder.addEventListener('click', () => showSection(totalOrderSection, navTotalOrder));
+    if (navFittingWise) navFittingWise.addEventListener('click', () => showSection(fittingWiseSection, navFittingWise));
+    if (navPermissions) navPermissions.addEventListener('click', () => showSection(permissionsSection, navPermissions));
+    if (navSettings) navSettings.addEventListener('click', () => showSection(settingsSection, navSettings));
+    if (navFittingOutReport) navFittingOutReport.addEventListener('click', () => showSection(fittingOutReportSection, navFittingOutReport));
 
     // --- Backup & Restore Logic ---
     const backupDataBtn = document.getElementById('backupDataBtn');
@@ -1275,6 +1370,84 @@ document.addEventListener('DOMContentLoaded', () => {
         fittingWiseGrandTotal.textContent = grandTotal;
     });
 
+    // --- Fitting Out Report Logic ---
+    const generateFittingOutBtn = document.getElementById('generateFittingOutBtn');
+    const fittingOutStartDate = document.getElementById('fittingOutStartDate');
+    const fittingOutEndDate = document.getElementById('fittingOutEndDate');
+    const fittingOutReportHead = document.getElementById('fittingOutReportHead');
+    const fittingOutReportBody = document.getElementById('fittingOutReportBody');
+    const fittingOutReportFoot = document.getElementById('fittingOutReportFoot');
+
+    if (generateFittingOutBtn) {
+        generateFittingOutBtn.addEventListener('click', () => {
+            const start = fittingOutStartDate.value;
+            const end = fittingOutEndDate.value;
+
+            if (!start || !end) {
+                alert("Please select both Start Date and End Date");
+                return;
+            }
+
+            // Filter Data by Fitting Out Date (row.date)
+            const filteredRows = tableData.filter(row => {
+                const fDate = row.date;
+                if (!fDate) return false;
+                return fDate >= start && fDate <= end;
+            });
+
+            if (filteredRows.length === 0) {
+                fittingOutReportHead.innerHTML = '';
+                fittingOutReportFoot.innerHTML = '';
+                fittingOutReportBody.innerHTML = '<tr><td style="text-align:center; padding: 20px;">No data found for this range.</td></tr>';
+                return;
+            }
+
+            // Find all unique Platforms & Designs from filtered results
+            const platforms = [...new Set(filteredRows.map(r => r.platform || 'Unknown'))].sort();
+            const designs = [...new Set(filteredRows.map(r => r.designNo || 'Unknown'))].sort();
+
+            // Build Headers: Design No | Plat 1 | Plat 2 | ... | Total
+            let headHtml = `<tr>
+                <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); text-align: left;">Design No</th>`;
+            platforms.forEach(p => {
+                headHtml += `<th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); text-align: center;">${p}</th>`;
+            });
+            headHtml += `<th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(20, 184, 166, 0.2); text-align: center;">Total</th></tr>`;
+            fittingOutReportHead.innerHTML = headHtml;
+
+            // Build Rows
+            let bodyHtml = '';
+            const colTotals = new Array(platforms.length).fill(0);
+            let grandGrandTotal = 0;
+
+            designs.forEach(design => {
+                let rowTotal = 0;
+                bodyHtml += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 12px; font-weight: 600; color: #fff;">${design}</td>`;
+                
+                platforms.forEach((plat, pIdx) => {
+                    const count = filteredRows.filter(r => (r.designNo || 'Unknown') === design && (r.platform || 'Unknown') === plat).length;
+                    bodyHtml += `<td style="padding: 12px; text-align: center; color: rgba(255,255,255,0.7);">${count || '-'}</td>`;
+                    rowTotal += count;
+                    colTotals[pIdx] += count;
+                });
+
+                bodyHtml += `<td style="padding: 12px; text-align: center; font-weight: bold; color: #2dd4bf;">${rowTotal}</td></tr>`;
+                grandGrandTotal += rowTotal;
+            });
+            fittingOutReportBody.innerHTML = bodyHtml;
+
+            // Build Footer
+            let footHtml = `<tr style="background: rgba(255,255,255,0.05); font-weight: bold;">
+                <td style="padding: 12px; border-top: 2px solid rgba(255,255,255,0.1);">Grand Total</td>`;
+            colTotals.forEach(total => {
+                footHtml += `<td style="padding: 12px; text-align: center; border-top: 2px solid rgba(255,255,255,0.1);">${total}</td>`;
+            });
+            footHtml += `<td style="padding: 12px; text-align: center; color: #2dd4bf; border-top: 2px solid rgba(20, 184, 166, 0.4); font-size: 1.1rem;">${grandGrandTotal}</td></tr>`;
+            fittingOutReportFoot.innerHTML = footHtml;
+        });
+    }
+
     // --- Fitting Wise PDF Export ---
     const exportFittingWisePdfBtn = document.getElementById('exportFittingWisePdfBtn');
     exportFittingWisePdfBtn.addEventListener('click', () => {
@@ -1349,40 +1522,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Role-Based Access Control ---
     function applyRoleAccess() {
-        const role = localStorage.getItem('accessRole') || 'fullaccess';
+        const activeUserId = localStorage.getItem('activeUserId') || '';
+        const navPermEl = document.getElementById('navPermissions');
+        const isAdmin = (activeUserId === 'vishal' || activeUserId === 'piyush');
 
-        // Column indices (0-based, thead th positions):
-        // 0:#, 1:OrderDate, 2:FittingOutDate(date), 3:OrderNo, 4:DesignNo,
-        // 5:BlouseSize, 6:Customize, 7:KotiSize, 8:KurtaSize,
-        // 9:Platform, 10:FittingName, 11:FinalDate,
-        // 12:FittingInDate(receiveDate), 13:FittingReceiveDate, 14:ShipDate, 15:Action
+        // Force Permissions tab for admins
+        if (navPermEl) navPermEl.style.display = isAdmin ? 'block' : 'none';
 
-        // Columns visible per role (always show #=0 and Action=15)
-        // 0:#, 1:OrderDate, 2:FittingOutDate, 3:OrderNo, 4:DesignNo,
-        // 5:BlouseSize, 6:Customize, 7:KotiSize, 8:KurtaSize,
-        // 9:Platform, 10:FittingName, 11:FinalDate,
-        // 12:FittingInDate, 13:FittingReceiveDate, 14:ShipDate, 15:Action
-        const roleColumns = {
-            order: new Set([0, 1, 2, 3, 4, 9, 14, 15]),             // Added 2: Fitting Out Date
-            fitting: new Set([0, 2, 3, 4, 9, 11, 12, 13, 15]),       // FittingOutDate, OrderNo, DesignNo, Platform, FinalDate, FittingReceiveDate, FittingInDate
-            fullaccess: null                                     // Show all
-        };
+        const userPermRaw = userPermissions[activeUserId] || {};
+        // Handle both object { orderChecked: true, reports: {} } AND legacy string "fullaccess"
+        let uPerm = (typeof userPermRaw === 'object') ? userPermRaw : { reports: {} };
+        if (userPermRaw === 'fullaccess') uPerm = { fullAdmin: true }; // internal bridge
+        else if (userPermRaw === 'order') uPerm.orderChecked = true;
+        else if (userPermRaw === 'fitting') uPerm.fittingChecked = true;
 
-        const visibleCols = roleColumns[role];
+        const reports = uPerm.reports || {};
+        
+        // --- Navigation Visibility ---
+        const navMap = [
+            { id: 'navReports', visible: !!reports.totalPending },
+            { id: 'navDateWise', visible: !!reports.dateWise },
+            { id: 'navLatePis', visible: !!reports.latePis },
+            { id: 'navTotalOrder', visible: !!reports.totalOrder },
+            { id: 'navFittingWise', visible: !!reports.fittingWise },
+            { id: 'navFittingOutReport', visible: !!reports.fittingOutReport }
+        ];
+
+        // "Data" tab visibility
+        const navDataEl = document.getElementById('navData');
+        const canSeeData = isAdmin || uPerm.fullAdmin || uPerm.orderChecked || uPerm.fittingChecked;
+        if (navDataEl) navDataEl.style.display = canSeeData ? 'block' : 'none';
+
+        navMap.forEach(cfg => {
+            const el = document.getElementById(cfg.id);
+            if (el) {
+                // Admins see everything, others see what's checked
+                el.style.display = (isAdmin || uPerm.fullAdmin || cfg.visible) ? 'block' : 'none';
+            }
+        });
+
+        // --- Table Column Visibility ---
+        let visibleCols = null; // null means show all (Full Admin)
+
+        if (!isAdmin && !uPerm.fullAdmin) {
+            visibleCols = new Set([0]); // Always show index (Column #)
+            let hasAnyField = false;
+            for (let i = 1; i <= 15; i++) { // Include up to Col 15 (User Name)
+                if (uPerm[`col_${i}`]) {
+                    visibleCols.add(i);
+                    hasAnyField = true;
+                }
+            }
+            // Show Action column (index 16) if user has access to any field
+            if (hasAnyField) visibleCols.add(16);
+        }
 
         if (visibleCols === null) {
-            // Full access — show everything, all nav tabs
+            // Full Admin reset
+            const styleTag = document.getElementById('roleAccessStyle');
+            if (styleTag) styleTag.textContent = '';
+            document.querySelectorAll('#dataTable thead tr th').forEach(th => th.style.display = '');
             return;
         }
 
-        // Hide/Show thead columns
+        // Apply column hiding based on individual field selections
         const theadCells = document.querySelectorAll('#dataTable thead tr th');
         theadCells.forEach((th, i) => {
             th.style.display = visibleCols.has(i) ? '' : 'none';
         });
 
-        // Patch createRowElement to hide cells — override renderTable via CSS injection
-        // We use col-index data attributes approach: inject a style tag
+        // Inject CSS for dynamic column hiding
         let styleTag = document.getElementById('roleAccessStyle');
         if (!styleTag) {
             styleTag = document.createElement('style');
@@ -1390,47 +1599,147 @@ document.addEventListener('DOMContentLoaded', () => {
             document.head.appendChild(styleTag);
         }
 
-        // Build CSS to hide cells in tbody rows
-        // Each td in a row corresponds to column index
-        const totalCols = theadCells.length;
         let cssRules = '';
-        for (let i = 0; i < totalCols; i++) {
+        for (let i = 0; i < theadCells.length; i++) {
             if (!visibleCols.has(i)) {
-                // nth-child is 1-based
                 cssRules += `#dataTable tbody tr td:nth-child(${i + 1}) { display: none; }\n`;
             }
         }
         styleTag.textContent = cssRules;
 
-        // Hide some Report nav items for order/fitting roles
-        if (role === 'order' || role === 'fitting') {
-            let hideNavIds = ['navDateWise', 'navLatePis', 'navTotalOrder', 'navFittingWise'];
-            
-            // If role is 'order', we WANT to see the Total Order report because it shows Platform data
-            if (role === 'order') {
-                hideNavIds = ['navDateWise', 'navLatePis', 'navFittingWise']; // Keep 'navTotalOrder'
-            }
-
-            hideNavIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = 'none';
-            });
-        }
-
-        // Disable Add50 and ClearAll for non-full-access
-        if (role !== 'fullaccess') {
+        // Management buttons (already handled correctly)
+        if (!isAdmin && !uPerm.fullAdmin) {
             const add50 = document.getElementById('add50Btn');
             const clearAll = document.getElementById('clearAllBtn');
-            if (add50) add50.style.display = 'none';
-            if (clearAll) clearAll.style.display = 'none';
-        }
-
-        // Hide Platform/Fitting management buttons for non-full-access
-        if (role !== 'fullaccess') {
             const platBtn = document.getElementById('managePlatformsBtn');
             const fitBtn = document.getElementById('manageFittingsBtn');
+            if (add50) add50.style.display = 'none';
+            if (clearAll) clearAll.style.display = 'none';
             if (platBtn) platBtn.style.display = 'none';
             if (fitBtn) fitBtn.style.display = 'none';
+        }
+    }
+
+    // --- User Permissions Management (Flipped Layout) ---
+    function renderPermissionsTable() {
+        const tbody = document.getElementById('userPermissionsTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const dataEntryFields = [
+            { key: 'col_1', label: 'Order Date', color: '#f59e0b' },
+            { key: 'col_2', label: 'Fitting Out Date', color: '#f59e0b' },
+            { key: 'col_3', label: 'Order No', color: '#f59e0b' },
+            { key: 'col_4', label: 'Design No', color: '#f59e0b' },
+            { key: 'col_5', label: 'Blouse Size', color: '#f59e0b' },
+            { key: 'col_6', label: 'Customize Blouse', color: '#f59e0b' },
+            { key: 'col_7', label: 'Koti Size', color: '#f59e0b' },
+            { key: 'col_8', label: 'Kurta Size', color: '#f59e0b' },
+            { key: 'col_9', label: 'Platform', color: '#f59e0b' },
+            { key: 'col_10', label: 'Fitting Name', color: '#f59e0b' },
+            { key: 'col_11', label: 'Final Date', color: '#f59e0b' },
+            { key: 'col_12', label: 'Fitting Received', color: '#f59e0b' }, // index 12
+            { key: 'col_13', label: 'Fitting In/Reture', color: '#f59e0b' }, // index 13
+            { key: 'col_14', label: 'Ship Date', color: '#f59e0b' },
+            { key: 'col_15', label: 'User Name Log', color: '#f59e0b' }
+        ];
+
+        const reportsList = [
+            { key: 'totalPending', label: 'Total Pending', color: '#6366f1' },
+            { key: 'dateWise', label: 'Date Wise', color: '#a855f7' },
+            { id: 'latePis', key: 'latePis', label: 'Late PIS', color: '#f43f5e' },
+            { key: 'totalOrder', label: 'Total Order', color: '#fbbf24' },
+            { key: 'fittingWise', label: 'Fitting Wise', color: '#34d399' },
+            { key: 'fittingOutReport', label: 'Fitting Out Report', color: '#2dd4bf' }
+        ];
+
+        const usersToDisplay = ALL_USERS.filter(u => u.id !== 'vishal' && u.id !== 'piyush');
+
+        // Add Section Header for Data Entry
+        const headerData = document.createElement('tr');
+        headerData.innerHTML = `<td colspan="${usersToDisplay.length + 1}" style="background: rgba(45, 212, 191, 0.1); color: #2dd4bf; padding: 10px 20px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border-bottom: 2px solid rgba(45, 212, 191, 0.2);">Data Entry Table Fields</td>`;
+        tbody.appendChild(headerData);
+
+        dataEntryFields.forEach(perm => {
+            renderRow(perm, 'field');
+        });
+
+        // Add Section Header for Reports
+        const headerRep = document.createElement('tr');
+        headerRep.innerHTML = `<td colspan="${usersToDisplay.length + 1}" style="background: rgba(129, 140, 248, 0.1); color: #818cf8; padding: 10px 20px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border-top: 10px solid transparent; border-bottom: 2px solid rgba(129, 140, 248, 0.2);">Dashboard Reports</td>`;
+        tbody.appendChild(headerRep);
+
+        reportsList.forEach(perm => {
+            renderRow(perm, 'report');
+        });
+
+        function renderRow(perm, group) {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+            
+            let html = `<td style="padding: 12px 20px; font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.7); position: sticky; left: 0; background: #1a1a2e; z-index: 1;">${perm.label}</td>`;
+            
+            usersToDisplay.forEach(user => {
+                const raw = userPermissions[user.id] || {};
+                const uPerm = (typeof raw === 'object') ? raw : { reports: {} };
+                let isChecked = false;
+
+                if (group === 'report') {
+                    isChecked = !!(uPerm.reports && uPerm.reports[perm.key || perm.id]);
+                } else {
+                    isChecked = !!uPerm[perm.key];
+                }
+
+                html += `
+                    <td style="text-align: center; padding: 10px;">
+                        <input type="checkbox" class="perm-check" 
+                               data-user="${user.id}" 
+                               data-group="${group}" 
+                               data-key="${perm.key || perm.id}" 
+                               ${isChecked ? 'checked' : ''}>
+                    </td>`;
+            });
+
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+        }
+
+        // Re-attach listeners
+        tbody.querySelectorAll('.perm-check').forEach(chk => {
+            chk.addEventListener('change', (e) => {
+                const userId = e.target.dataset.user;
+                const group = e.target.dataset.group;
+                const key = e.target.dataset.key;
+                const isChecked = e.target.checked;
+
+                let current = userPermissions[userId] || {};
+                if (typeof current === 'string') {
+                    const oldRole = current;
+                    current = { reports: {} };
+                    if (oldRole === 'order') current.col_1 = current.col_3 = current.col_4 = current.col_9 = current.col_14 = true;
+                    if (oldRole === 'fitting') current.col_2 = current.col_3 = current.col_4 = current.col_9 = current.col_11 = current.col_12 = current.col_13 = true;
+                    if (oldRole === 'fullaccess') current.fullAdmin = true;
+                }
+                if (!current.reports) current.reports = {};
+
+                if (group === 'report') {
+                    current.reports[key] = isChecked;
+                } else {
+                    current[key] = isChecked;
+                }
+
+                userPermissions[userId] = current;
+                syncPermissionsToCloud();
+                applyRoleAccess();
+            });
+        });
+    }
+
+    function syncPermissionsToCloud() {
+        if (isFirebaseConnected && firebase.database) {
+            firebase.database().ref('user_permissions').set(userPermissions)
+                .then(() => console.log("☁️ Permissions Synced"))
+                .catch(err => console.error("Permission Sync Error:", err));
         }
     }
 
@@ -1546,7 +1855,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Event Bindings ---
     managePlatformsBtn.addEventListener('click', () => openModal(platformModal, renderPlatformList));
     closePlatformModal.addEventListener('click', () => closeModal(platformModal));
     addPlatformBtn.addEventListener('click', addPlatform);
