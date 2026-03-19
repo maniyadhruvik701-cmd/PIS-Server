@@ -480,7 +480,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            input.addEventListener('input', (e) => {
+            const eventType = (input.tagName === 'SELECT') ? 'change' : 'input';
+            input.addEventListener(eventType, (e) => {
                 const targetField = e.target.getAttribute('data-field');
 
                 if (targetField === 'finalDate' && e.target.value) {
@@ -527,10 +528,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (exists) {
                             // Small delay to ensure blur process completes
                             setTimeout(() => {
-                                if (!confirm("entry is already exist do you want a new entry")) {
+                                if (!confirm("Entry already exists with same Order No and Design No! Delete this duplicate entry?")) {
+                                    // Row stays if they click No
+                                } else {
                                     deleteRow(data); // Deletes the entire row
                                 }
-                            }, 10);
+                            }, 50);
                         }
                     }
                 });
@@ -555,11 +558,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. Map data with original Sr. No. (1-based index) and then reverse
         // This ensures the latest entries are shown first while preserving their true ID
-        let displayData = tableData.map((row, idx) => ({ 
-            ...row, 
-            _originalIdx: idx,
-            _srNo: idx + 1 
-        }));
+        let displayData = tableData.map((row, idx) => {
+            row._originalIdx = idx;
+            row._srNo = idx + 1;
+            return row;
+        });
 
         // 2. Apply Search Filter if any
         if (searchQuery) {
@@ -1561,8 +1564,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
 
         // "Data" tab visibility
-        const navDataEl = document.getElementById('navData');
-        const canSeeData = isAdmin || uPerm.fullAdmin || uPerm.orderChecked || uPerm.fittingChecked;
+        let hasAnyCol = false;
+        for (let i = 1; i <= 15; i++) {
+            if (uPerm[`col_${i}`]) { hasAnyCol = true; break; }
+        }
+        const hasAnyReport = Object.values(reports).some(v => v === true);
+        const canSeeData = isAdmin || uPerm.fullAdmin || uPerm.orderChecked || uPerm.fittingChecked || hasAnyCol;
         if (navDataEl) navDataEl.style.display = canSeeData ? 'block' : 'none';
 
         navMap.forEach(cfg => {
