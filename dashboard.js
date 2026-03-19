@@ -213,15 +213,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     // --- Global Data Listener ---
                     dbRef.on('value', (snapshot) => {
                         const data = snapshot.val();
-                        if (data && Array.isArray(data)) {
+                        // Only overwrite if we got valid array and it's not empty (prevents accidental "Delete All" if DB glitches)
+                        if (data && Array.isArray(data) && data.length > 0) {
                             if (JSON.stringify(data) !== JSON.stringify(tableData)) {
+                                // Important: Check if user is currently typing before refreshing UI
+                                const activeEl = document.activeElement;
+                                const isUserTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT') && activeEl.closest('#dataTable');
+
                                 tableData = data;
                                 localStorage.setItem(DATA_KEY, JSON.stringify(tableData));
 
-                                const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
-                                if (currentPage > totalPages) currentPage = totalPages;
-                                renderTable();
-                                console.log("☁️ Data Synced from Cloud");
+                                // Only render table from sync if user is NOT actively typing to prevent losing focus/input
+                                if (!isUserTyping) {
+                                    const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
+                                    if (currentPage > totalPages) currentPage = totalPages;
+                                    renderTable();
+                                    console.log("☁️ Data Synced from Cloud");
+                                } else {
+                                    console.log("☁️ Cloud update received, will refresh after you finish typing.");
+                                }
                             }
                         }
                     });
@@ -480,7 +490,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            const eventType = (input.tagName === 'SELECT') ? 'change' : 'input';
+            // Use 'change' instead of 'input' for text fields to save only when user finishes typing
+            // This prevents race conditions with Firebase and avoids "automatic deletion"
+            const eventType = (input.tagName === 'SELECT' || input.type === 'date') ? 'change' : 'change';
             input.addEventListener(eventType, (e) => {
                 const targetField = e.target.getAttribute('data-field');
 
@@ -515,25 +527,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (field === 'orderNo' || field === 'designNo') {
                 input.addEventListener('blur', function() {
                     const orderNo = (data.orderNo || '').toString().trim();
-                    const designNo = (data.designNo || '').toString().trim();
 
-                    // Only check if both fields are filled
-                    if (orderNo && designNo) {
+                    // Only check if Order No is filled (don't wait for Design No)
+                    if (orderNo) {
                         const exists = tableData.some(r => 
                             r !== data && 
-                            (r.orderNo || '').toString().trim().toLowerCase() === orderNo.toLowerCase() && 
-                            (r.designNo || '').toString().trim().toLowerCase() === designNo.toLowerCase()
+                            (r.orderNo || '').toString().trim().toLowerCase() === orderNo.toLowerCase()
                         );
 
                         if (exists) {
-                            // Small delay to ensure blur process completes
+                            // Highlight the duplicate instead of deleting immediately
+                            input.style.borderColor = "#ef4444";
+                            input.style.boxShadow = "0 0 10px rgba(239, 68, 68, 0.3)";
+                            
                             setTimeout(() => {
-                                if (!confirm("Entry already exists with same Order No and Design No! Delete this duplicate entry?")) {
-                                    // Row stays if they click No
-                                } else {
-                                    deleteRow(data); // Deletes the entire row
-                                }
-                            }, 50);
+                                alert(`Warning: Order No "${orderNo}" already exists in the table!`);
+                            }, 100);
+                        } else {
+                            input.style.borderColor = "";
+                            input.style.boxShadow = "";
                         }
                     }
                 });
@@ -1545,12 +1557,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navPermEl) navPermEl.style.display = isAdmin ? 'block' : 'none';
 
         const userPermRaw = userPermissions[activeUserId] || {};
-        // Handle both object { orderChecked: true, reports: {} } AND legacy string "fullaccess"
-        let uPerm = (typeof userPermRaw === 'object') ? userPermRaw : { reports: {} };
-        if (userPermRaw === 'fullaccess') uPerm = { fullAdmin: true }; // internal bridge
-        else if (userPermRaw === 'order') uPerm.orderChecked = true;
-        else if (userPermRaw === 'fitting') uPerm.fittingChecked = true;
-
+        // Unified Permission Object: only use the object-based granular permissions
+        let uPerm = (typeof userPermRaw === 'object') ? { ...userPermRaw } : { reports: {} };
+        
         const reports = uPerm.reports || {};
         
         // --- Navigation Visibility ---
@@ -1569,21 +1578,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (uPerm[`col_${i}`]) { hasAnyCol = true; break; }
         }
         const hasAnyReport = Object.values(reports).some(v => v === true);
-        const canSeeData = isAdmin || uPerm.fullAdmin || uPerm.orderChecked || uPerm.fittingChecked || hasAnyCol;
-        if (navDataEl) navDataEl.style.display = canSeeData ? 'block' : 'none';
+        const canSeeData = isAdmin || hasAnyCol || hasAnyReport; // Admins see all, others see if they have any column or report access
+        if (navData) navData.style.display = canSeeData ? 'block' : 'none';
 
         navMap.forEach(cfg => {
             const el = document.getElementById(cfg.id);
             if (el) {
-                // Admins see everything, others see what's checked
-                el.style.display = (isAdmin || uPerm.fullAdmin || cfg.visible) ? 'block' : 'none';
+                // Admins see everything, others see what's explicitly checked
+                el.style.display = (isAdmin || cfg.visible) ? 'block' : 'none';
             }
         });
 
         // --- Table Column Visibility ---
-        let visibleCols = null; // null means show all (Full Admin)
-
-        if (!isAdmin && !uPerm.fullAdmin) {
+        let visibleCols = null; // null means show all (for Admins)
+        if (!isAdmin) { // Only apply restrictions for non-admins
             visibleCols = new Set([0]); // Always show index (Column #)
             let hasAnyField = false;
             for (let i = 1; i <= 15; i++) { // Include up to Col 15 (User Name)
@@ -1735,9 +1743,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof current === 'string') {
                     const oldRole = current;
                     current = { reports: {} };
-                    if (oldRole === 'order') current.col_1 = current.col_3 = current.col_4 = current.col_9 = current.col_14 = true;
-                    if (oldRole === 'fitting') current.col_2 = current.col_3 = current.col_4 = current.col_9 = current.col_11 = current.col_12 = current.col_13 = true;
-                    if (oldRole === 'fullaccess') current.fullAdmin = true;
+                    if (oldRole === 'order') {
+                        ['col_1', 'col_3', 'col_4', 'col_9', 'col_14'].forEach(k => current[k] = true);
+                    } else if (oldRole === 'fitting') {
+                        ['col_2', 'col_3', 'col_4', 'col_9', 'col_11', 'col_12', 'col_13'].forEach(k => current[k] = true);
+                    } else if (oldRole === 'fullaccess') {
+                        for(let i=1; i<=15; i++) current[`col_${i}`] = true;
+                        current.reports = { totalPending: true, dateWise: true, latePis: true, totalOrder: true, fittingWise: true, fittingOutReport: true };
+                    }
                 }
                 if (!current.reports) current.reports = {};
 
@@ -1748,17 +1761,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 userPermissions[userId] = current;
-                syncPermissionsToCloud();
+                syncPermissionsToCloud(userId);
                 applyRoleAccess();
             });
         });
     }
 
-    function syncPermissionsToCloud() {
+    function syncPermissionsToCloud(userIdToSync) {
         if (isFirebaseConnected && firebase.database) {
-            firebase.database().ref('user_permissions').set(userPermissions)
-                .then(() => console.log("☁️ Permissions Synced"))
-                .catch(err => console.error("Permission Sync Error:", err));
+            // If a specific userId is provided, only update that user's data to avoid race conditions
+            if (userIdToSync) {
+                firebase.database().ref('user_permissions/' + userIdToSync).set(userPermissions[userIdToSync])
+                    .then(() => console.log(`☁️ Permissions for ${userIdToSync} Synced`))
+                    .catch(err => console.error("Permission Sync Error:", err));
+            } else {
+                // Otherwise update all (rare)
+                firebase.database().ref('user_permissions').set(userPermissions)
+                    .then(() => console.log("☁️ All Permissions Synced"))
+                    .catch(err => console.error("Permission Sync Error:", err));
+            }
         }
     }
 
