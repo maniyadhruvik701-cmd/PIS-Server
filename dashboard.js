@@ -37,13 +37,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userProfile && !document.getElementById('roleBadge')) {
         const roleBadge = document.createElement('span');
         roleBadge.id = 'roleBadge';
-        const roleLabels = { order: 'Order', fitting: 'Fitting', fullaccess: 'Full Access' };
-        const roleColors = { order: '#f59e0b', fitting: '#10b981', fullaccess: '#6366f1' };
-        roleBadge.textContent = roleLabels[accessRole] || accessRole;
+        const roleLabels = { order: 'Order', fitting: 'Fitting', fullaccess: 'Full Access', Member: 'Member' };
+        const roleColors = { order: '#f59e0b', fitting: '#10b981', fullaccess: '#6366f1', Member: '#14b8a6' };
+        
+        // Clean up any [object Object] text if it already existed in localStorage
+        const cleanRole = (accessRole && accessRole.toString().includes('object')) ? 'Member' : (accessRole || 'Member');
+        
+        roleBadge.textContent = roleLabels[cleanRole] || cleanRole;
         roleBadge.style.cssText = `
             font-size: 0.7rem; font-weight: 600; padding: 3px 10px;
-            border-radius: 50px; background: ${roleColors[accessRole] || '#6366f1'}22;
-            color: ${roleColors[accessRole] || '#6366f1'}; border: 1px solid ${roleColors[accessRole] || '#6366f1'}44;
+            border-radius: 50px; background: ${roleColors[cleanRole] || '#6366f1'}22;
+            color: ${roleColors[cleanRole] || '#6366f1'}; border: 1px solid ${roleColors[cleanRole] || '#6366f1'}44;
             margin-left: 6px; vertical-align: middle;
         `;
         userProfileName.after(roleBadge);
