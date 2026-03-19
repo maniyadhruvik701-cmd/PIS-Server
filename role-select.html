@@ -623,7 +623,9 @@
                 }
 
                 // Save Role and User Info for Dashboard
-                localStorage.setItem('accessRole', dashboardRole);
+                // Ensure accessRole is a string for the UI badge (Member or standard role)
+                const roleString = (typeof dashboardRole === 'object') ? 'Member' : dashboardRole;
+                localStorage.setItem('accessRole', roleString);
                 localStorage.setItem('activeUserId', selectedUserObj.id);
                 localStorage.setItem('activeUserName', selectedUserObj.name);
                 
