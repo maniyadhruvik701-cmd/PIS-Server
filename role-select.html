@@ -10,102 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* --- MANAGEMENT MODAL --- */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 100;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
 
-        .modal-content {
-            background: #1e1b4b;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            width: 100%;
-            max-width: 500px;
-            padding: 30px;
-            color: white;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .modal-header h2 {
-            font-size: 1.5rem;
-            background: linear-gradient(to right, #6366f1, #a855f7);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .close-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .user-perm-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-height: 400px;
-            overflow-y: auto;
-            padding-right: 10px;
-        }
-
-        .user-perm-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .user-perm-item span {
-            font-weight: 600;
-            text-transform: capitalize;
-        }
-
-        .perm-select {
-            background: #2d2a5d;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 8px;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .manage-tag {
-            background: rgba(99, 102, 241, 0.2);
-            color: #818cf8;
-            padding: 4px 10px;
-            border-radius: 50px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
 
         /* Essential Reset should be inside styles */
         *,
@@ -485,11 +390,7 @@
                 <!-- User Cards will be injected here -->
             </div>
 
-            <div id="manageBtnContainer" style="margin-top: 30px; display: none;">
-                <button id="openManageBtn" class="key-btn" style="width: 100%; font-size: 1rem; background: rgba(99, 102, 241, 0.2); border-color: rgba(99, 102, 241, 0.4);">
-                    <i class="fas fa-user-shield" style="margin-right: 10px;"></i> Manage Permissions
-                </button>
-            </div>
+
         </div>
 
         <!-- SCREEN 2: PIN Entry -->
@@ -532,21 +433,7 @@
             </div>
         </div>
 
-        <!-- Permission Management Modal -->
-        <div id="manageModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Manage User Permissions</h2>
-                    <button class="close-btn" id="closeManageBtn">&times;</button>
-                </div>
-                <div class="user-perm-list" id="userPermList">
-                    <!-- Loaded dynamically -->
-                </div>
-                <div style="margin-top: 25px; text-align: center;">
-                    <p style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.4);">Permissions are synced in real-time</p>
-                </div>
-            </div>
-        </div>
+
     </div>
 
     <!-- Firebase SDKs -->
@@ -569,6 +456,10 @@
             firebase.initializeApp(firebaseConfig);
         }
         const database = firebase.database();
+        const auth = firebase.auth();
+        
+        // Use local storage to cache permissions for instant access while cloud syncs
+        let userPermissions = JSON.parse(localStorage.getItem('pis_cached_permissions') || '{}');
 
         // ---- Auth Guard ----
         const currentUserRaw = localStorage.getItem('currentUser');
@@ -588,15 +479,8 @@
             { id: 'bhumi', name: 'Bhumi', pin: '6573', color: '#14b8a6' }
         ];
 
-        // Default Role Mappings (if firebase is empty)
-        let userPermissions = {
-            amish: 'fitting',
-            arshit: 'order',
-            manager: 'order',
-            radhi: 'fitting',
-            vruti: 'fitting',
-            bhumi: 'order'
-        };
+        // No Default Role Mappings - Permission must be given by Vishal/Piyush in Manage Modal
+        // Initialized from cache above
 
         // ---- State ----
         let selectedUserObj = null;
@@ -624,12 +508,17 @@
         }
 
         function syncPermissions() {
-            database.ref('user_permissions').on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    userPermissions = data;
-                }
-            });
+            // Sign in anonymously first for faster/reliable connection to database
+            auth.signInAnonymously().then(() => {
+                database.ref('user_permissions').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        userPermissions = data;
+                        // Cache locally for next time (instant login)
+                        localStorage.setItem('pis_cached_permissions', JSON.stringify(data));
+                    }
+                });
+            }).catch(err => console.error("Firebase Login Error:", err));
         }
 
         function renderUserCards() {
@@ -717,12 +606,20 @@
         function checkPin() {
             if (enteredPin === selectedUserObj.pin) {
                 // Determine actual dashboard role
-                let dashboardRole = 'order'; // fallback
+                let dashboardRole = ''; // No default role
                 if (selectedUserObj.isAdmin) {
                     dashboardRole = 'fullaccess';
                     isPiyushOrVishal = true;
                 } else {
-                    dashboardRole = userPermissions[selectedUserObj.id] || 'order';
+                    dashboardRole = userPermissions[selectedUserObj.id] || '';
+                }
+
+                // Protect Access: If no role is assigned, don't let them in
+                if (!dashboardRole) {
+                    pinError.textContent = 'Access Denied: You have no assigned permissions. Contact Vishal or Piyush.';
+                    enteredPin = '';
+                    updateDots();
+                    return;
                 }
 
                 // Save Role and User Info for Dashboard
@@ -762,43 +659,7 @@
             }
         });
 
-        // ---- Management Logic ----
-        document.getElementById('openManageBtn').addEventListener('click', () => {
-            renderManagementList();
-            manageModal.style.display = 'flex';
-        });
 
-        document.getElementById('closeManageBtn').addEventListener('click', () => {
-            manageModal.style.display = 'none';
-        });
-
-        function renderManagementList() {
-            userPermList.innerHTML = '';
-            USERS.filter(u => !u.isAdmin).forEach(user => {
-                const item = document.createElement('div');
-                item.className = 'user-perm-item';
-                
-                const currentRole = userPermissions[user.id] || 'order';
-
-                item.innerHTML = `
-                    <span>${user.name}</span>
-                    <select class="perm-select" data-user="${user.id}">
-                        <option value="order" ${currentRole === 'order' ? 'selected' : ''}>Order Role</option>
-                        <option value="fitting" ${currentRole === 'fitting' ? 'selected' : ''}>Fitting Role</option>
-                        <option value="fullaccess" ${currentRole === 'fullaccess' ? 'selected' : ''}>Full Access</option>
-                    </select>
-                `;
-
-                const select = item.querySelector('select');
-                select.addEventListener('change', (e) => {
-                    const newRole = e.target.value;
-                    userPermissions[user.id] = newRole;
-                    database.ref('user_permissions').set(userPermissions);
-                });
-
-                userPermList.appendChild(item);
-            });
-        }
 
         // Animated BG particles
         const particleContainer = document.getElementById('bgParticles');
