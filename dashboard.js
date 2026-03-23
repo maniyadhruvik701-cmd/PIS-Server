@@ -224,7 +224,34 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const activeEl = document.activeElement;
                                 const isUserTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT') && activeEl.closest('#dataTable');
 
-                                tableData = data;
+                                // --- CRITICAL FIX: In-place Merge ---
+                                // Instead of tableData = data, we update objects in-place to keep UI row references alive.
+                                // If we replace the array reference, row elements rendered from the old array 
+                                // become disconnected from the new tableData, causing data loss on save.
+                                
+                                // 1. Update existing objects and add new ones
+                                data.forEach((newRow, i) => {
+                                    if (tableData[i]) {
+                                        // Check if this specific row is being edited at any field
+                                        let isThisRowEditing = false;
+                                        if (isUserTyping) {
+                                            const rowEl = activeEl.closest('tr');
+                                            // Each rendered row has a displayIndex + 1 in the first cell
+                                            // But since we reverse for display, we check the object itself if possible
+                                            // Actually, since we use Object.assign, the UI row's reference to tableData[i] 
+                                            // remains valid. The user's typed value will win on next 'change' event.
+                                        }
+                                        Object.assign(tableData[i], newRow);
+                                    } else {
+                                        tableData.push({...newRow});
+                                    }
+                                });
+
+                                // 2. Remove extra rows if server has fewer rows
+                                if (tableData.length > data.length) {
+                                    tableData.splice(data.length);
+                                }
+
                                 localStorage.setItem(DATA_KEY, JSON.stringify(tableData));
 
                                 // Only render table from sync if user is NOT actively typing to prevent losing focus/input
@@ -232,9 +259,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
                                     if (currentPage > totalPages) currentPage = totalPages;
                                     renderTable();
-                                    console.log("☁️ Data Synced from Cloud");
+                                    console.log("☁️ Data Synced from Cloud (In-place)");
                                 } else {
-                                    console.log("☁️ Cloud update received, will refresh after you finish typing.");
+                                    console.log("☁️ Cloud update merged in-place, UI will refresh after you finish typing.");
                                 }
                             }
                         }
@@ -376,6 +403,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Core Functions ---
 
     function addRows(count) {
+        // Force blur on current active element to ensure any pending 'change' events fire 
+        // to save the current row's data before we re-render and add new rows.
+        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+            document.activeElement.blur();
+        }
+
         for (let i = 0; i < count; i++) {
             tableData.push(addNewEntryObject());
         }
@@ -496,9 +529,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Use 'change' instead of 'input' for text fields to save only when user finishes typing
             // This prevents race conditions with Firebase and avoids "automatic deletion"
-            const eventType = (input.tagName === 'SELECT' || input.type === 'date') ? 'change' : 'change';
+            const eventType = 'change';
             input.addEventListener(eventType, (e) => {
                 const targetField = e.target.getAttribute('data-field');
+
+                // --- CRITICAL FIX: Date Corruption Safeguard ---
+                // If it's a date field and it's currently in 'text' mode (showing dd-mm-yyyy),
+                // we MUST NOT save this value to our data object, as it expect YYYY-MM-DD.
+                // Saving dd-mm-yyyy will break the date picker next time it's focused.
+                if (isDateField && input.type === 'text') {
+                    return; 
+                }
 
                 if (targetField === 'finalDate' && e.target.value) {
                     const selectedDate = e.target.value;
