@@ -65,6 +65,12 @@
                         <span>Fitting Out Report</span>
                     </a>
                 </li>
+                <li id="navShipPending">
+                    <a href="#">
+                        <i class="fas fa-shipping-fast"></i>
+                        <span>Ship Pending Report</span>
+                    </a>
+                </li>
                 <li id="navPermissions" style="display: none;">
                     <a href="#">
                         <i class="fas fa-user-shield"></i>
@@ -104,7 +110,9 @@
                         <button id="managePlatformsBtn" class="btn-secondary" style="background: #eab308;"><i
                                 class="fas fa-list"></i> Platforms</button>
                         <button id="manageFittingsBtn" class="btn-secondary" style="background: #10b981;"><i
-                                class="fas fa-tshirt"></i> Fittings</button>
+                                 class="fas fa-tshirt"></i> Fittings</button>
+                        <button id="manageFittingDetailsBtn" class="btn-secondary" style="background: #eab308;"><i
+                                 class="fas fa-cogs"></i> Fitting Details</button>
                     </div>
                     <div class="right-controls">
                         <div class="search-box">
@@ -128,6 +136,7 @@
                                 <th>Fitting Out Date</th>
                                 <th>Order No</th>
                                 <th>Design No</th>
+                                <th>Fitting Detail</th>
                                 <th>Blouse Size</th>
                                 <th>Customize Blouse</th>
                                 <th>Koti Size</th>
@@ -461,6 +470,53 @@
                 </div>
             </div>
 
+            <!-- Ship Pending Report Section -->
+            <div class="reports-container" id="shipPendingSection" style="display: none;">
+                <div class="table-header-controls">
+                    <div class="left-controls">
+                        <h2>Ship Pending Report</h2>
+                        <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">Analyze ship status by date range</p>
+                    </div>
+                </div>
+
+                <div class="report-controls">
+                    <div class="date-group">
+                        <label>Start Date:</label>
+                        <input type="date" id="shipPendingStartDate">
+                    </div>
+                    <div class="date-group">
+                        <label>End Date:</label>
+                        <input type="date" id="shipPendingEndDate">
+                    </div>
+                    <button id="generateShipPendingBtn" class="btn-primary"><i class="fas fa-search"></i> Generate Report</button>
+                    <button id="exportShipPendingPdfBtn" class="btn-danger" style="padding: 10px 20px; font-weight: 600; font-size: 0.85rem; border-radius: 8px;"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                </div>
+
+                <div class="report-table-wrapper" style="overflow-x: auto; margin-top: 20px;">
+                    <table id="shipPendingTable" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); text-align: left;">Order Date</th>
+                                <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); text-align: left;">Order No</th>
+                                <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); text-align: left;">Design No</th>
+                                <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); text-align: left;">Platform</th>
+                                <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); text-align: left;">Ship Date</th>
+                                <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); text-align: center;">Pending (1/0)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shipPendingTbody">
+                            <!-- Injected via JS -->
+                        </tbody>
+                        <tfoot id="shipPendingTfoot">
+                            <tr style="background: rgba(0, 198, 255, 0.2); font-weight: bold;">
+                                <td colspan="5" style="text-align: left; padding: 12px; padding-left: 20px;">Total Pending Entries</td>
+                                <td id="shipPendingGrandTotal" style="text-align: center; color: #2dd4bf; font-size: 1.1rem;">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
             <!-- Settings Section (Hidden by default) -->
             <div class="reports-container" id="settingsSection" style="display: none;">
                 <h2 style="margin-bottom: 20px;">Settings & Data Sync</h2>
@@ -546,6 +602,25 @@
 
                     <div class="platform-list-container">
                         <ul id="fittingList">
+                            <!-- List items will be added here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fitting Detail Management Modal -->
+            <div id="fittingDetailModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal close-fitting-detail-modal">&times;</span>
+                    <h2>Manage Fitting Details</h2>
+
+                    <div class="add-platform-group">
+                        <input type="text" id="newFittingDetailInput" placeholder="Enter new fitting detail">
+                        <button id="addFittingDetailBtn" class="btn-primary">Add</button>
+                    </div>
+
+                    <div class="platform-list-container">
+                        <ul id="fittingDetailList">
                             <!-- List items will be added here -->
                         </ul>
                     </div>
