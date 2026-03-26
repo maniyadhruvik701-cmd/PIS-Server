@@ -430,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             receiveDate: '',
             fittingReceiveDate: '',
             shipDate: '',
+            pcs: 1,
             updatedBy: localStorage.getItem('activeUserName') || ''
         };
     }
@@ -520,6 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${platformOptions.map(opt => `<option value="${opt}" ${data.platform === opt ? 'selected' : ''}>${opt}</option>`).join('')}
                 </select>
             </td>
+            <td><input type="number" data-field="pcs" value="${data.pcs || 1}"></td>
             <td>
                 <select data-field="fittingName">
                     <option value="">Select Fitting</option>
@@ -680,6 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     (row.fittingName && row.fittingName.toLowerCase().includes(query)) ||
                     (row.blouseSize && row.blouseSize.toString().toLowerCase().includes(query)) ||
                     (row.customize && row.customize.toLowerCase().includes(query)) ||
+                    (row.pcs && row.pcs.toString().includes(query)) ||
                     (row.date && row.date.includes(query))
                 );
             });
@@ -996,8 +999,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filterDate >= startDate && filterDate <= endDate) {
                 const finalDate = new Date(row.finalDate);
 
-                // Count row as 1 item
-                let itemsInRow = 1;
+                // Count using pcs field
+                let itemsInRow = parseInt(row.pcs) || 1;
 
                 if (itemsInRow > 0) {
                     const design = row.designNo || "Unknown";
@@ -1132,8 +1135,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         };
                     }
 
-                    // Count the row itself as 1 pending item, regardless of sizes
-                    let itemsInRow = 1;
+                    // Count using pcs field
+                    let itemsInRow = parseInt(row.pcs) || 1;
 
                     // If itemsInRow > 0, add to map
                     if (itemsInRow > 0) {
@@ -1219,8 +1222,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const kotiSize = row.kotiSize || "-";
                     const kurtaSize = row.kurtaSize || "-";
 
-                    // Count the row itself as 1 pending item
-                    let itemsInRow = 1;
+                    // Count using pcs field
+                    let itemsInRow = parseInt(row.pcs) || 1;
 
                     if (itemsInRow > 0) {
                         // Check if we already have an entry for this Deadline + Design + Platform + OrderNo
@@ -1350,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const p = row.platform || '';
             const d = row.designNo || '';
             if (p && d && pivot[d] && pivot[d][p] !== undefined) {
-                pivot[d][p]++;
+                pivot[d][p] += (parseInt(row.pcs) || 1);
             }
         });
 
@@ -1456,9 +1459,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                 }
 
-                // Count 1 piece per row matching the date range
-                reportMap[key].count += 1;
-                grandTotal += 1;
+                // Use pcs field
+                const rowPcs = parseInt(row.pcs) || 1;
+                reportMap[key].count += rowPcs;
+                grandTotal += rowPcs;
             }
         });
 
@@ -1549,10 +1553,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td style="padding: 12px; font-weight: 600; color: #fff;">${design}</td>`;
                 
                 platforms.forEach((plat, pIdx) => {
-                    const count = filteredRows.filter(r => (r.designNo || 'Unknown') === design && (r.platform || 'Unknown') === plat).length;
-                    bodyHtml += `<td style="padding: 12px; text-align: center; color: rgba(255,255,255,0.7);">${count || '-'}</td>`;
-                    rowTotal += count;
-                    colTotals[pIdx] += count;
+                    const rowPcs = filteredRows.filter(r => (r.designNo || 'Unknown') === design && (r.platform || 'Unknown') === plat)
+                                              .reduce((acc, r) => acc + (parseInt(r.pcs) || 1), 0);
+                    bodyHtml += `<td style="padding: 12px; text-align: center; color: rgba(255,255,255,0.7);">${rowPcs || '-'}</td>`;
+                    rowTotal += rowPcs;
+                    colTotals[pIdx] += rowPcs;
                 });
 
                 bodyHtml += `<td style="padding: 12px; text-align: center; font-weight: bold; color: #2dd4bf;">${rowTotal}</td></tr>`;
@@ -1606,17 +1611,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             filteredRows.forEach(row => {
                 const isPending = !row.shipDate || row.shipDate.trim() === '';
-                const pendingVal = isPending ? 1 : 0;
-                totalPending += pendingVal;
+                if (isPending) {
+                    const rowPcs = parseInt(row.pcs) || 1;
+                    totalPending += rowPcs;
 
-                bodyHtml += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <td style="padding: 12px;">${formatDateForDisplay(row.orderDate)}</td>
-                    <td style="padding: 12px;">${row.orderNo || '-'}</td>
-                    <td style="padding: 12px;">${row.designNo || '-'}</td>
-                    <td style="padding: 12px;">${row.platform || '-'}</td>
-                    <td style="padding: 12px;">${row.shipDate ? formatDateForDisplay(row.shipDate) : '-'}</td>
-                    <td style="padding: 12px; text-align: center; color: ${isPending ? '#f472b6' : '#94a3b8'}; font-weight: ${isPending ? 'bold' : 'normal'};">${pendingVal}</td>
-                </tr>`;
+                    bodyHtml += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 12px;">${formatDateForDisplay(row.orderDate)}</td>
+                        <td style="padding: 12px;">${row.orderNo || '-'}</td>
+                        <td style="padding: 12px;">${row.designNo || '-'}</td>
+                        <td style="padding: 12px;">${row.platform || '-'}</td>
+                        <td style="padding: 12px;">${rowPcs}</td>
+                    </tr>`;
+                }
             });
 
             shipPendingTbody.innerHTML = bodyHtml;
