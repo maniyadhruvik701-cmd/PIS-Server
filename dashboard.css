@@ -599,12 +599,14 @@ td input[type="date"] {
 }
 
 #platformList,
-#fittingList {
+#fittingList,
+#fittingDetailList {
     list-style: none;
 }
 
 #platformList li,
-#fittingList li {
+#fittingList li,
+#fittingDetailList li {
     padding: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
@@ -613,12 +615,14 @@ td input[type="date"] {
 }
 
 #platformList li:last-child,
-#fittingList li:last-child {
+#fittingList li:last-child,
+#fittingDetailList li:last-child {
     border-bottom: none;
 }
 
 #platformList li:hover,
-#fittingList li:hover {
+#fittingList li:hover,
+#fittingDetailList li:hover {
     background: rgba(255, 255, 255, 0.05);
 }
 
