@@ -116,8 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let tableData = []; // Array of Objects to store data
     let platformOptions = [];
     let fittingOptions = [];
+    let fittingDetailOptions = [];
     const defaultPlatforms = ['rw', 'Tappe', 'ms', 'HR', 'HR Trendy', 'Trendy Culture', 'Textile centere', 'Trendy piyush', 'Ajio - Junuku', 'Ajio - 2 De', 'Ajio - Jihu', 'my - De', 'my - Jihu'];
     const defaultFittings = ['chacha', 'jahangir', 'jitu'];
+    const defaultFittingDetails = ['Fitting 1', 'Fitting 2'];
 
     // --- Platform/Fitting Management Functions ---
     function loadPlatforms() {
@@ -155,6 +157,24 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sync to cloud
         if (isFirebaseConnected && firebase.database) {
             firebase.database().ref('pis_fittings').set(fittingOptions).catch(err => console.error("Cloud Fitting Save Error:", err));
+        }
+    }
+
+    function loadFittingDetails() {
+        const stored = localStorage.getItem('pis_fitting_details');
+        if (stored) {
+            fittingDetailOptions = JSON.parse(stored);
+        } else {
+            fittingDetailOptions = [...defaultFittingDetails];
+            saveFittingDetails();
+        }
+    }
+
+    function saveFittingDetails() {
+        localStorage.setItem('pis_fitting_details', JSON.stringify(fittingDetailOptions));
+        // Sync to cloud
+        if (isFirebaseConnected && firebase.database) {
+            firebase.database().ref('pis_fitting_details').set(fittingDetailOptions).catch(err => console.error("Cloud Fitting Detail Save Error:", err));
         }
     }
 
@@ -294,6 +314,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
 
+                    // --- Fitting Details Listener ---
+                    database.ref('pis_fitting_details').on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data && Array.isArray(data)) {
+                            if (JSON.stringify(data) !== JSON.stringify(fittingDetailOptions)) {
+                                fittingDetailOptions = data;
+                                localStorage.setItem('pis_fitting_details', JSON.stringify(fittingDetailOptions));
+                                renderTable();
+                                console.log("☁️ Fitting Details Synced from Cloud");
+                            }
+                        }
+                    });
+
                     // --- User Permissions Listener ---
                     database.ref('user_permissions').on('value', (snapshot) => {
                         const data = snapshot.val();
@@ -386,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             orderDate: today, // Order Date - default to today
             orderNo: '',
             designNo: '',
+            fittingDetail: '',
             blouseSize: '',
             customize: '',
             kotiSize: '',
@@ -470,6 +504,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><input type="date" data-field="date" value="${data.date || ''}"></td>
             <td><input type="text" data-field="orderNo" placeholder="Order No" value="${data.orderNo || ''}"></td>
             <td><input type="text" data-field="designNo" placeholder="Design No" value="${data.designNo || ''}"></td>
+            <td>
+                <select data-field="fittingDetail">
+                    <option value="">Select Detail</option>
+                    ${fittingDetailOptions.map(opt => `<option value="${opt}" ${data.fittingDetail === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                </select>
+            </td>
             <td><input type="text" data-field="blouseSize" placeholder="Size" value="${data.blouseSize || ''}"></td>
             <td><input type="text" data-field="customize" placeholder="Customize" value="${data.customize || ''}"></td>
             <td><input type="text" data-field="kotiSize" placeholder="Koti Size" value="${data.kotiSize || ''}"></td>
@@ -491,7 +531,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><input type="date" data-field="fittingReceiveDate" value="${data.fittingReceiveDate || ''}"></td>
             <td><input type="date" data-field="shipDate" value="${data.shipDate || ''}"></td>
             <td style="font-size: 0.8rem; color: rgba(255,255,255,0.6); vertical-align: middle;" class="row-user-name">${data.updatedBy || ''}</td>
-            <td style="text-align: center;">
+            <td style="text-align: center; white-space: nowrap;">
+                <button class="edit-row-btn" title="Edit Row" style="background: transparent; border: none; color: var(--accent-color); cursor: pointer; padding: 5px; margin-right: 5px;"><i class="fas fa-edit"></i></button>
                 <button class="delete-btn" title="Delete Row"><i class="fas fa-trash"></i></button>
             </td>
         `;
@@ -603,6 +644,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm("Are you sure you want to delete this row?")) {
                 deleteRow(data); // Pass the object itself
             }
+        });
+
+        const editBtn = row.querySelector('.edit-row-btn');
+        editBtn.addEventListener('click', () => {
+            // Focusing the first logical input of the row
+            const firstInput = row.querySelector('input');
+            if (firstInput) firstInput.focus();
         });
 
         return row;
@@ -765,6 +813,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navTotalOrder = document.getElementById('navTotalOrder');
     const navFittingWise = document.getElementById('navFittingWise');
     const navFittingOutReport = document.getElementById('navFittingOutReport');
+    const navShipPending = document.getElementById('navShipPending');
     const navPermissions = document.getElementById('navPermissions');
     const navSettings = document.getElementById('navSettings');
 
@@ -775,11 +824,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalOrderSection = document.getElementById('totalOrderSection');
     const fittingWiseSection = document.getElementById('fittingWiseSection');
     const fittingOutReportSection = document.getElementById('fittingOutReportSection');
+    const shipPendingSection = document.getElementById('shipPendingSection');
     const permissionsSection = document.getElementById('permissionsSection');
     const settingsSection = document.getElementById('settingsSection');
 
-    const sections = [dataSection, reportsSection, dateWiseSection, latePisSection, totalOrderSection, fittingWiseSection, fittingOutReportSection, permissionsSection, settingsSection];
-    const navs = [navData, navReports, navDateWise, navLatePis, navTotalOrder, navFittingWise, navFittingOutReport, navPermissions, navSettings];
+    const sections = [dataSection, reportsSection, dateWiseSection, latePisSection, totalOrderSection, fittingWiseSection, fittingOutReportSection, shipPendingSection, permissionsSection, settingsSection];
+    const navs = [navData, navReports, navDateWise, navLatePis, navTotalOrder, navFittingWise, navFittingOutReport, navShipPending, navPermissions, navSettings];
 
     // Global Permissions State
     let userPermissions = {};
@@ -817,6 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navPermissions) navPermissions.addEventListener('click', () => showSection(permissionsSection, navPermissions));
     if (navSettings) navSettings.addEventListener('click', () => showSection(settingsSection, navSettings));
     if (navFittingOutReport) navFittingOutReport.addEventListener('click', () => showSection(fittingOutReportSection, navFittingOutReport));
+    if (navShipPending) navShipPending.addEventListener('click', () => showSection(shipPendingSection, navShipPending));
 
     // --- Backup & Restore Logic ---
     const backupDataBtn = document.getElementById('backupDataBtn');
@@ -1520,6 +1571,80 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Ship Pending Report Logic ---
+    const generateShipPendingBtn = document.getElementById('generateShipPendingBtn');
+    const shipPendingStartDate = document.getElementById('shipPendingStartDate');
+    const shipPendingEndDate = document.getElementById('shipPendingEndDate');
+    const shipPendingTbody = document.getElementById('shipPendingTbody');
+    const shipPendingGrandTotal = document.getElementById('shipPendingGrandTotal');
+
+    if (generateShipPendingBtn) {
+        generateShipPendingBtn.addEventListener('click', () => {
+            const start = shipPendingStartDate.value;
+            const end = shipPendingEndDate.value;
+
+            if (!start || !end) {
+                alert("Please select both Start Date and End Date");
+                return;
+            }
+
+            // Filter Data by Order Date range
+            const filteredRows = tableData.filter(row => {
+                const oDate = row.orderDate;
+                if (!oDate) return false;
+                return oDate >= start && oDate <= end;
+            });
+
+            if (filteredRows.length === 0) {
+                shipPendingTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No data found for this range.</td></tr>';
+                shipPendingGrandTotal.textContent = "0";
+                return;
+            }
+
+            let bodyHtml = '';
+            let totalPending = 0;
+
+            filteredRows.forEach(row => {
+                const isPending = !row.shipDate || row.shipDate.trim() === '';
+                const pendingVal = isPending ? 1 : 0;
+                totalPending += pendingVal;
+
+                bodyHtml += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 12px;">${formatDateForDisplay(row.orderDate)}</td>
+                    <td style="padding: 12px;">${row.orderNo || '-'}</td>
+                    <td style="padding: 12px;">${row.designNo || '-'}</td>
+                    <td style="padding: 12px;">${row.platform || '-'}</td>
+                    <td style="padding: 12px;">${row.shipDate ? formatDateForDisplay(row.shipDate) : '-'}</td>
+                    <td style="padding: 12px; text-align: center; color: ${isPending ? '#f472b6' : '#94a3b8'}; font-weight: ${isPending ? 'bold' : 'normal'};">${pendingVal}</td>
+                </tr>`;
+            });
+
+            shipPendingTbody.innerHTML = bodyHtml;
+            shipPendingGrandTotal.textContent = totalPending;
+        });
+    }
+
+    // --- Ship Pending PDF Export ---
+    const exportShipPendingPdfBtn = document.getElementById('exportShipPendingPdfBtn');
+    if (exportShipPendingPdfBtn) {
+        exportShipPendingPdfBtn.addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait' });
+            const start = shipPendingStartDate.value;
+            const end = shipPendingEndDate.value;
+            doc.text(`Ship Pending Report (${start} to ${end})`, 14, 15);
+            doc.autoTable({
+                html: '#shipPendingTable',
+                startY: 20,
+                theme: 'grid',
+                headStyles: { fillColor: [244, 114, 182] }, // Pink color to match
+                footStyles: { fillColor: [20, 20, 20], textColor: [255, 255, 255] },
+                styles: { fontSize: 10, cellPadding: 3 },
+            });
+            doc.save(`Ship_Pending_${start}_${end}.pdf`);
+        });
+    }
+
     // --- Fitting Wise PDF Export ---
     const exportFittingWisePdfBtn = document.getElementById('exportFittingWisePdfBtn');
     exportFittingWisePdfBtn.addEventListener('click', () => {
@@ -1590,6 +1715,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize
     loadPlatforms();
     loadFittings();
+    loadFittingDetails();
     loadFromLocalStorage();
 
     // --- Role-Based Access Control ---
@@ -1614,12 +1740,13 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'navLatePis', visible: !!reports.latePis },
             { id: 'navTotalOrder', visible: !!reports.totalOrder },
             { id: 'navFittingWise', visible: !!reports.fittingWise },
-            { id: 'navFittingOutReport', visible: !!reports.fittingOutReport }
+            { id: 'navFittingOutReport', visible: !!reports.fittingOutReport },
+            { id: 'navShipPending', visible: !!reports.shipPending }
         ];
 
         // "Data" tab visibility
         let hasAnyCol = false;
-        for (let i = 1; i <= 15; i++) {
+        for (let i = 1; i <= 16; i++) {
             if (uPerm[`col_${i}`]) { hasAnyCol = true; break; }
         }
         const hasAnyReport = Object.values(reports).some(v => v === true);
@@ -1639,14 +1766,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isAdmin) { // Only apply restrictions for non-admins
             visibleCols = new Set([0]); // Always show index (Column #)
             let hasAnyField = false;
-            for (let i = 1; i <= 15; i++) { // Include up to Col 15 (User Name)
+            for (let i = 1; i <= 16; i++) { // Include up to Col 16 (User Name)
                 if (uPerm[`col_${i}`]) {
                     visibleCols.add(i);
                     hasAnyField = true;
                 }
             }
-            // Show Action column (index 16) if user has access to any field
-            if (hasAnyField) visibleCols.add(16);
+            // Show Action column (index 17) if user has access to any field
+            if (hasAnyField) visibleCols.add(17);
         }
 
         if (visibleCols === null) {
@@ -1703,17 +1830,18 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'col_2', label: 'Fitting Out Date', color: '#f59e0b' },
             { key: 'col_3', label: 'Order No', color: '#f59e0b' },
             { key: 'col_4', label: 'Design No', color: '#f59e0b' },
-            { key: 'col_5', label: 'Blouse Size', color: '#f59e0b' },
-            { key: 'col_6', label: 'Customize Blouse', color: '#f59e0b' },
-            { key: 'col_7', label: 'Koti Size', color: '#f59e0b' },
-            { key: 'col_8', label: 'Kurta Size', color: '#f59e0b' },
-            { key: 'col_9', label: 'Platform', color: '#f59e0b' },
-            { key: 'col_10', label: 'Fitting Name', color: '#f59e0b' },
-            { key: 'col_11', label: 'Final Date', color: '#f59e0b' },
-            { key: 'col_12', label: 'Fitting Received', color: '#f59e0b' }, // index 12
-            { key: 'col_13', label: 'Fitting In/Reture', color: '#f59e0b' }, // index 13
-            { key: 'col_14', label: 'Ship Date', color: '#f59e0b' },
-            { key: 'col_15', label: 'User Name Log', color: '#f59e0b' }
+            { key: 'col_5', label: 'Fitting Detail', color: '#f59e0b' },
+            { key: 'col_6', label: 'Blouse Size', color: '#f59e0b' },
+            { key: 'col_7', label: 'Customize Blouse', color: '#f59e0b' },
+            { key: 'col_8', label: 'Koti Size', color: '#f59e0b' },
+            { key: 'col_9', label: 'Kurta Size', color: '#f59e0b' },
+            { key: 'col_10', label: 'Platform', color: '#f59e0b' },
+            { key: 'col_11', label: 'Fitting Name', color: '#f59e0b' },
+            { key: 'col_12', label: 'Final Date', color: '#f59e0b' },
+            { key: 'col_13', label: 'Fitting Received', color: '#f59e0b' },
+            { key: 'col_14', label: 'Fitting In/Reture', color: '#f59e0b' },
+            { key: 'col_15', label: 'Ship Date', color: '#f59e0b' },
+            { key: 'col_16', label: 'User Name Log', color: '#f59e0b' }
         ];
 
         const reportsList = [
@@ -1722,7 +1850,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'latePis', key: 'latePis', label: 'Late PIS', color: '#f43f5e' },
             { key: 'totalOrder', label: 'Total Order', color: '#fbbf24' },
             { key: 'fittingWise', label: 'Fitting Wise', color: '#34d399' },
-            { key: 'fittingOutReport', label: 'Fitting Out Report', color: '#2dd4bf' }
+            { key: 'fittingOutReport', label: 'Fitting Out Report', color: '#2dd4bf' },
+            { key: 'shipPending', label: 'Ship Pending', color: '#f472b6' }
         ];
 
         const usersToDisplay = ALL_USERS.filter(u => u.id !== 'vishal' && u.id !== 'piyush');
@@ -1793,8 +1922,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (oldRole === 'fitting') {
                         ['col_2', 'col_3', 'col_4', 'col_9', 'col_11', 'col_12', 'col_13'].forEach(k => current[k] = true);
                     } else if (oldRole === 'fullaccess') {
-                        for(let i=1; i<=15; i++) current[`col_${i}`] = true;
-                        current.reports = { totalPending: true, dateWise: true, latePis: true, totalOrder: true, fittingWise: true, fittingOutReport: true };
+                        for(let i=1; i<=16; i++) current[`col_${i}`] = true;
+                        current.reports = { totalPending: true, dateWise: true, latePis: true, totalOrder: true, fittingWise: true, fittingOutReport: true, shipPending: true };
                     }
                 }
                 if (!current.reports) current.reports = {};
@@ -1864,7 +1993,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             li.innerHTML = `
             <span>${platform}</span>
+            <div style="display: flex; gap: 8px;">
+                <button class="platform-edit-btn" data-type="platform" data-index="${index}" style="background: transparent; border: none; color: var(--accent-color); cursor: pointer;"><i class="fas fa-edit"></i></button>
                 <button class="platform-delete-btn" data-type="platform" data-index="${index}"><i class="fas fa-trash"></i></button>
+            </div>
         `;
             platformList.appendChild(li);
         });
@@ -1884,6 +2016,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function editPlatform(index) {
+        const oldVal = platformOptions[index];
+        const newVal = prompt(`Edit Platform Name:`, oldVal);
+        if (newVal && newVal.trim() !== "" && newVal !== oldVal) {
+            platformOptions[index] = newVal.trim();
+            savePlatforms();
+            renderPlatformList();
+            renderTable();
+        }
+    }
+
     function deletePlatform(index) {
         if (confirm(`Delete "${platformOptions[index]}"?`)) {
             platformOptions.splice(index, 1);
@@ -1900,7 +2043,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             li.innerHTML = `
             <span>${fitting}</span>
+            <div style="display: flex; gap: 8px;">
+                <button class="platform-edit-btn" data-type="fitting" data-index="${index}" style="background: transparent; border: none; color: var(--accent-color); cursor: pointer;"><i class="fas fa-edit"></i></button>
                 <button class="platform-delete-btn" data-type="fitting" data-index="${index}"><i class="fas fa-trash"></i></button>
+            </div>
         `;
             fittingList.appendChild(li);
         });
@@ -1920,6 +2066,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function editFitting(index) {
+        const oldVal = fittingOptions[index];
+        const newVal = prompt(`Edit Fitting Name:`, oldVal);
+        if (newVal && newVal.trim() !== "" && newVal !== oldVal) {
+            fittingOptions[index] = newVal.trim();
+            saveFittings();
+            renderFittingList();
+            renderTable();
+        }
+    }
+
     function deleteFitting(index) {
         if (confirm(`Delete "${fittingOptions[index]}"?`)) {
             fittingOptions.splice(index, 1);
@@ -1936,9 +2093,80 @@ document.addEventListener('DOMContentLoaded', () => {
                 const index = e.currentTarget.getAttribute('data-index');
                 if (type === 'platform') deletePlatform(index);
                 else if (type === 'fitting') deleteFitting(index);
+                else if (type === 'fittingDetail') deleteFittingDetail(index);
+            });
+        });
+
+        document.querySelectorAll(`.platform-edit-btn[data-type="${type}"]`).forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const index = e.currentTarget.getAttribute('data-index');
+                if (type === 'platform') editPlatform(index);
+                else if (type === 'fitting') editFitting(index);
+                else if (type === 'fittingDetail') editFittingDetail(index);
             });
         });
     }
+
+    // --- Fitting Detail Logic ---
+    const fittingDetailModal = document.getElementById('fittingDetailModal');
+    const manageFittingDetailsBtn = document.getElementById('manageFittingDetailsBtn');
+    const closeFittingDetailModal = document.querySelector('.close-fitting-detail-modal');
+    const addFittingDetailBtn = document.getElementById('addFittingDetailBtn');
+    const newFittingDetailInput = document.getElementById('newFittingDetailInput');
+    const fittingDetailList = document.getElementById('fittingDetailList');
+
+    function renderFittingDetailList() {
+        fittingDetailList.innerHTML = '';
+        fittingDetailOptions.forEach((detail, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+            <span>${detail}</span>
+            <div style="display: flex; gap: 8px;">
+                <button class="platform-edit-btn" data-type="fittingDetail" data-index="${index}" style="background: transparent; border: none; color: var(--accent-color); cursor: pointer;"><i class="fas fa-edit"></i></button>
+                <button class="platform-delete-btn" data-type="fittingDetail" data-index="${index}"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
+            fittingDetailList.appendChild(li);
+        });
+        attachDeleteListeners('fittingDetail');
+    }
+
+    function addFittingDetail() {
+        const newVal = newFittingDetailInput.value.trim();
+        if (newVal && !fittingDetailOptions.includes(newVal)) {
+            fittingDetailOptions.push(newVal);
+            saveFittingDetails();
+            newFittingDetailInput.value = '';
+            renderFittingDetailList();
+            renderTable();
+        } else if (fittingDetailOptions.includes(newVal)) {
+            alert('Detail already exists!');
+        }
+    }
+
+    function editFittingDetail(index) {
+        const oldVal = fittingDetailOptions[index];
+        const newVal = prompt(`Edit Fitting Detail:`, oldVal);
+        if (newVal && newVal.trim() !== "" && newVal !== oldVal) {
+            fittingDetailOptions[index] = newVal.trim();
+            saveFittingDetails();
+            renderFittingDetailList();
+            renderTable();
+        }
+    }
+
+    function deleteFittingDetail(index) {
+        if (confirm(`Delete "${fittingDetailOptions[index]}"?`)) {
+            fittingDetailOptions.splice(index, 1);
+            saveFittingDetails();
+            renderFittingDetailList();
+            renderTable();
+        }
+    }
+
+    manageFittingDetailsBtn.addEventListener('click', () => openModal(fittingDetailModal, renderFittingDetailList));
+    closeFittingDetailModal.addEventListener('click', () => closeModal(fittingDetailModal));
+    addFittingDetailBtn.addEventListener('click', addFittingDetail);
 
     managePlatformsBtn.addEventListener('click', () => openModal(platformModal, renderPlatformList));
     closePlatformModal.addEventListener('click', () => closeModal(platformModal));
