@@ -571,7 +571,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.addEventListener('blur', function () {
                     this.type = 'text';
                     this.value = formatDateForDisplay(data[field]);
+                    if(this.adjustWidth) this.adjustWidth();
                 });
+            }
+
+            // Auto-resize logic so the box adjusts as user types
+            if (input.tagName === 'INPUT') {
+                input.style.minWidth = '50px'; // Prevent it from getting too small
+                input.adjustWidth = function() {
+                    const length = this.value.length;
+                    const charCount = Math.max(6, length + 2); // At least 6 character width
+                    this.style.width = charCount + 'ch';
+                };
+                
+                // Keep the input event for resizing ONLY
+                input.addEventListener('input', function() {
+                    this.adjustWidth();
+                });
+                
+                // Initial size adjustment
+                input.adjustWidth();
             }
 
             // Use 'change' instead of 'input' for text fields to save only when user finishes typing
