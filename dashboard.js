@@ -417,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             date: '', // Fitting Out Date - make it empty by default
             orderDate: today, // Order Date - default to today
+            confirmationDate: '', // Confirmation Date
             orderNo: '',
             designNo: '',
             fittingDetail: '',
@@ -502,6 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.innerHTML = `
             <td class="row-index">${displayIndex + 1}</td>
             <td><input type="date" data-field="orderDate" value="${data.orderDate || ''}"></td>
+            <td><input type="date" data-field="confirmationDate" value="${data.confirmationDate || ''}"></td>
             <td><input type="date" data-field="date" value="${data.date || ''}"></td>
             <td><input type="text" data-field="orderNo" placeholder="Order No" value="${data.orderNo || ''}"></td>
             <td><input type="text" data-field="designNo" placeholder="Design No" value="${data.designNo || ''}"></td>
@@ -543,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputs = row.querySelectorAll('input, select');
         inputs.forEach(input => {
             const field = input.getAttribute('data-field');
-            const isDateField = ['date', 'orderDate', 'finalDate', 'receiveDate', 'fittingReceiveDate', 'shipDate'].includes(field);
+            const isDateField = ['date', 'orderDate', 'confirmationDate', 'finalDate', 'receiveDate', 'fittingReceiveDate', 'shipDate'].includes(field);
 
             // Special handling for date fields for dd-mm-yyyy display
             if (isDateField) {
@@ -1752,7 +1754,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // "Data" tab visibility (only if they have at least one column permission)
         let hasAnyCol = false;
-        for (let i = 1; i <= 17; i++) {
+        for (let i = 1; i <= 18; i++) {
             if (uPerm[`col_${i}`]) { hasAnyCol = true; break; }
         }
         
@@ -1768,18 +1770,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // --- Table Column Visibility ---
+        // Map permission keys to actual DOM column indices (0-based)
+        // DOM order: 0=#, 1=OrderDate, 2=ConfirmationDate, 3=FittingOutDate, 4=OrderNo,
+        //            5=DesignNo, 6=FittingDetail, 7=BlouseSize, 8=Customize, 9=KotiSize,
+        //            10=KurtaSize, 11=Platform, 12=Pcs, 13=FittingName, 14=FinalDate,
+        //            15=FittingReceived, 16=FittingIn, 17=ShipDate, 18=UserName, 19=Action
+        const colKeyToDomIndex = {
+            col_1: 1,   // Order Date
+            col_18: 2,  // Confirmation Date (new)
+            col_2: 3,   // Fitting Out Date
+            col_3: 4,   // Order No
+            col_4: 5,   // Design No
+            col_5: 6,   // Fitting Detail
+            col_6: 7,   // Blouse Size
+            col_7: 8,   // Customize Blouse
+            col_8: 9,   // Koti Size
+            col_9: 10,  // Kurta Size
+            col_10: 11, // Platform
+            col_11: 12, // Pcs
+            col_12: 13, // Fitting Name
+            col_13: 14, // Final Date
+            col_14: 15, // Fitting Received
+            col_15: 16, // Fitting In/Return
+            col_16: 17, // Ship Date
+            col_17: 18  // User Name Log
+        };
+        const ACTION_COL_INDEX = 19;
+
         let visibleCols = null; // null means show all (for Admins)
         if (!isAdmin) { // Only apply restrictions for non-admins
             visibleCols = new Set([0]); // Always show index (Column #)
             let hasAnyField = false;
-            for (let i = 1; i <= 17; i++) { // Include up to Col 17 (User Name)
-                if (uPerm[`col_${i}`]) {
-                    visibleCols.add(i);
+            for (const [key, domIdx] of Object.entries(colKeyToDomIndex)) {
+                if (uPerm[key]) {
+                    visibleCols.add(domIdx);
                     hasAnyField = true;
                 }
             }
-            // Show Action column (index 18) if user has access to any field
-            if (hasAnyField) visibleCols.add(18);
+            // Show Action column if user has access to any field
+            if (hasAnyField) visibleCols.add(ACTION_COL_INDEX);
         }
 
         if (visibleCols === null) {
@@ -1849,6 +1878,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const dataEntryFields = [
             { key: 'col_1', label: 'Order Date', color: '#f59e0b' },
+            { key: 'col_18', label: 'Confirmation Date', color: '#f59e0b' },
             { key: 'col_2', label: 'Fitting Out Date', color: '#f59e0b' },
             { key: 'col_3', label: 'Order No', color: '#f59e0b' },
             { key: 'col_4', label: 'Design No', color: '#f59e0b' },
