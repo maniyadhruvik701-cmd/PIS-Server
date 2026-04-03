@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     // Mark session as active so they can navigate tabs, but refresh still triggers above
-    sessionStorage.removeItem('pis_session_active'); 
+    sessionStorage.removeItem('pis_session_active');
 
     // --- Role Check ---
     const accessRole = localStorage.getItem('accessRole');
@@ -39,10 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
         roleBadge.id = 'roleBadge';
         const roleLabels = { order: 'Order', fitting: 'Fitting', fullaccess: 'Full Access', Member: 'Member' };
         const roleColors = { order: '#f59e0b', fitting: '#10b981', fullaccess: '#6366f1', Member: '#14b8a6' };
-        
+
         // Clean up any [object Object] text if it already existed in localStorage
         const cleanRole = (accessRole && accessRole.toString().includes('object')) ? 'Member' : (accessRole || 'Member');
-        
+
         roleBadge.textContent = roleLabels[cleanRole] || cleanRole;
         roleBadge.style.cssText = `
             font-size: 0.7rem; font-weight: 600; padding: 3px 10px;
@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // Instead of tableData = data, we update objects in-place to keep UI row references alive.
                                 // If we replace the array reference, row elements rendered from the old array 
                                 // become disconnected from the new tableData, causing data loss on save.
-                                
+
                                 // 1. Update existing objects and add new ones
                                 data.forEach((newRow, i) => {
                                     if (tableData[i]) {
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         }
                                         Object.assign(tableData[i], newRow);
                                     } else {
-                                        tableData.push({...newRow});
+                                        tableData.push({ ...newRow });
                                     }
                                 });
 
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             userPermissions = data;
                             // Update UI layout immediately when permissions change
                             applyRoleAccess();
-                            
+
                             if (document.getElementById('permissionsSection').style.display !== 'none') {
                                 renderPermissionsTable();
                             }
@@ -447,11 +447,11 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < count; i++) {
             tableData.push(addNewEntryObject());
         }
-        
+
         // After adding new rows, since we show newest first, 
         // they will appear at the top of Page 1.
         currentPage = 1;
-        
+
         saveToLocalStorage();
         renderTable();
     }
@@ -555,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     input.value = formatDateForDisplay(data[field]);
                 }
 
-                input.addEventListener('focus', function() {
+                input.addEventListener('focus', function () {
                     this.type = 'date';
                     this.value = data[field] || '';
                     if (this.showPicker) {
@@ -564,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                input.addEventListener('blur', function() {
+                input.addEventListener('blur', function () {
                     this.type = 'text';
                     this.value = formatDateForDisplay(data[field]);
                 });
@@ -581,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // we MUST NOT save this value to our data object, as it expect YYYY-MM-DD.
                 // Saving dd-mm-yyyy will break the date picker next time it's focused.
                 if (isDateField && input.type === 'text') {
-                    return; 
+                    return;
                 }
 
                 if (targetField === 'finalDate' && e.target.value) {
@@ -601,25 +601,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 data[targetField] = e.target.value; // Bind directly to the object reference
-                
+
                 // Track who updated this row
                 const activeUserName = localStorage.getItem('activeUserName') || 'Unknown';
                 data.updatedBy = activeUserName;
                 const userCell = row.querySelector('.row-user-name');
                 if (userCell) userCell.textContent = activeUserName;
-                
+
                 saveToLocalStorage(); // Auto-save on every keystroke/change
             });
 
             // Duplicate entry check on 'blur' event
             if (field === 'orderNo' || field === 'designNo') {
-                input.addEventListener('blur', function() {
+                input.addEventListener('blur', function () {
                     const orderNo = (data.orderNo || '').toString().trim();
 
                     // Only check if Order No is filled (don't wait for Design No)
                     if (orderNo) {
-                        const exists = tableData.some(r => 
-                            r !== data && 
+                        const exists = tableData.some(r =>
+                            r !== data &&
                             (r.orderNo || '').toString().trim().toLowerCase() === orderNo.toLowerCase()
                         );
 
@@ -627,7 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Highlight the duplicate instead of deleting immediately
                             input.style.borderColor = "#ef4444";
                             input.style.boxShadow = "0 0 10px rgba(239, 68, 68, 0.3)";
-                            
+
                             setTimeout(() => {
                                 alert(`Warning: Order No "${orderNo}" already exists in the table!`);
                             }, 100);
@@ -779,9 +779,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Sr No 300 is at index 299
                 const startIdx = startSr - 1;
                 const count = endSr - startIdx;
-                
+
                 tableData.splice(startIdx, count);
-                
+
                 saveToLocalStorage();
                 renderTable();
                 deleteRangeInput.value = '';
@@ -1472,7 +1472,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         keys.forEach(key => {
             const data = reportMap[key];
-            
+
             // Format Date to DD-MM-YYYY
             const [year, month, day] = data.fittingInDate.split('-');
             const formattedDate = `${day}-${month}-${year}`;
@@ -1551,10 +1551,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let rowTotal = 0;
                 bodyHtml += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <td style="padding: 12px; font-weight: 600; color: #fff;">${design}</td>`;
-                
+
                 platforms.forEach((plat, pIdx) => {
                     const rowPcs = filteredRows.filter(r => (r.designNo || 'Unknown') === design && (r.platform || 'Unknown') === plat)
-                                              .reduce((acc, r) => acc + (parseInt(r.pcs) || 1), 0);
+                        .reduce((acc, r) => acc + (parseInt(r.pcs) || 1), 0);
                     bodyHtml += `<td style="padding: 12px; text-align: center; color: rgba(255,255,255,0.7);">${rowPcs || '-'}</td>`;
                     rowTotal += rowPcs;
                     colTotals[pIdx] += rowPcs;
@@ -1736,9 +1736,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const userPermRaw = userPermissions[activeUserId] || {};
         // Unified Permission Object: only use the object-based granular permissions
         let uPerm = (typeof userPermRaw === 'object') ? { ...userPermRaw } : { reports: {} };
-        
+
         const reports = uPerm.reports || {};
-        
+
         // --- Navigation Visibility ---
         const navMap = [
             { id: 'navReports', visible: !!reports.totalPending },
@@ -1750,13 +1750,13 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'navShipPending', visible: !!reports.shipPending }
         ];
 
-        // "Data" tab visibility
+        // "Data" tab visibility (only if they have at least one column permission)
         let hasAnyCol = false;
-        for (let i = 1; i <= 16; i++) {
+        for (let i = 1; i <= 17; i++) {
             if (uPerm[`col_${i}`]) { hasAnyCol = true; break; }
         }
-        const hasAnyReport = Object.values(reports).some(v => v === true);
-        const canSeeData = isAdmin || hasAnyCol || hasAnyReport; // Admins see all, others see if they have any column or report access
+        
+        const canSeeData = isAdmin || hasAnyCol; 
         if (navData) navData.style.display = canSeeData ? 'block' : 'none';
 
         navMap.forEach(cfg => {
@@ -1772,14 +1772,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isAdmin) { // Only apply restrictions for non-admins
             visibleCols = new Set([0]); // Always show index (Column #)
             let hasAnyField = false;
-            for (let i = 1; i <= 16; i++) { // Include up to Col 16 (User Name)
+            for (let i = 1; i <= 17; i++) { // Include up to Col 17 (User Name)
                 if (uPerm[`col_${i}`]) {
                     visibleCols.add(i);
                     hasAnyField = true;
                 }
             }
-            // Show Action column (index 17) if user has access to any field
-            if (hasAnyField) visibleCols.add(17);
+            // Show Action column (index 18) if user has access to any field
+            if (hasAnyField) visibleCols.add(18);
         }
 
         if (visibleCols === null) {
@@ -1787,41 +1787,57 @@ document.addEventListener('DOMContentLoaded', () => {
             const styleTag = document.getElementById('roleAccessStyle');
             if (styleTag) styleTag.textContent = '';
             document.querySelectorAll('#dataTable thead tr th').forEach(th => th.style.display = '');
-            return;
-        }
+        } else {
+            // Apply column hiding based on individual field selections
+            const theadCells = document.querySelectorAll('#dataTable thead tr th');
+            theadCells.forEach((th, i) => {
+                th.style.display = visibleCols.has(i) ? '' : 'none';
+            });
 
-        // Apply column hiding based on individual field selections
-        const theadCells = document.querySelectorAll('#dataTable thead tr th');
-        theadCells.forEach((th, i) => {
-            th.style.display = visibleCols.has(i) ? '' : 'none';
-        });
-
-        // Inject CSS for dynamic column hiding
-        let styleTag = document.getElementById('roleAccessStyle');
-        if (!styleTag) {
-            styleTag = document.createElement('style');
-            styleTag.id = 'roleAccessStyle';
-            document.head.appendChild(styleTag);
-        }
-
-        let cssRules = '';
-        for (let i = 0; i < theadCells.length; i++) {
-            if (!visibleCols.has(i)) {
-                cssRules += `#dataTable tbody tr td:nth-child(${i + 1}) { display: none; }\n`;
+            // Inject CSS for dynamic column hiding
+            let styleTag = document.getElementById('roleAccessStyle');
+            if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'roleAccessStyle';
+                document.head.appendChild(styleTag);
             }
-        }
-        styleTag.textContent = cssRules;
 
-        // Management buttons (already handled correctly)
+            let cssRules = '';
+            for (let i = 0; i < theadCells.length; i++) {
+                if (!visibleCols.has(i)) {
+                    cssRules += `#dataTable tbody tr td:nth-child(${i + 1}) { display: none; }\n`;
+                }
+            }
+            styleTag.textContent = cssRules;
+        }
+
+        // Management buttons: Limited hiding for non-admins
         if (!isAdmin && !uPerm.fullAdmin) {
             const add50 = document.getElementById('add50Btn');
             const clearAll = document.getElementById('clearAllBtn');
             const platBtn = document.getElementById('managePlatformsBtn');
             const fitBtn = document.getElementById('manageFittingsBtn');
+            const fitDetBtn = document.getElementById('manageFittingDetailsBtn');
+
             if (add50) add50.style.display = 'none';
             if (clearAll) clearAll.style.display = 'none';
             if (platBtn) platBtn.style.display = 'none';
             if (fitBtn) fitBtn.style.display = 'none';
+            if (fitDetBtn) fitDetBtn.style.display = 'none';
+        }
+
+        // --- Active Tab Safeguard ---
+        if (!canSeeData && navData && navData.classList.contains('active')) {
+            const firstVisibleNav = navs.find(n => n && n.style.display !== 'none');
+            if (firstVisibleNav) {
+                const navIndex = navs.indexOf(firstVisibleNav);
+                if (navIndex !== -1 && sections[navIndex]) {
+                    showSection(sections[navIndex], firstVisibleNav);
+                }
+            } else {
+                dataSection.style.display = 'none';
+                document.getElementById('pageTitle').textContent = 'Access Denied';
+            }
         }
     }
 
@@ -1842,12 +1858,13 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'col_8', label: 'Koti Size', color: '#f59e0b' },
             { key: 'col_9', label: 'Kurta Size', color: '#f59e0b' },
             { key: 'col_10', label: 'Platform', color: '#f59e0b' },
-            { key: 'col_11', label: 'Fitting Name', color: '#f59e0b' },
-            { key: 'col_12', label: 'Final Date', color: '#f59e0b' },
-            { key: 'col_13', label: 'Fitting Received', color: '#f59e0b' },
-            { key: 'col_14', label: 'Fitting In/Reture', color: '#f59e0b' },
-            { key: 'col_15', label: 'Ship Date', color: '#f59e0b' },
-            { key: 'col_16', label: 'User Name Log', color: '#f59e0b' }
+            { key: 'col_11', label: 'Pcs', color: '#f59e0b' },
+            { key: 'col_12', label: 'Fitting Name', color: '#f59e0b' },
+            { key: 'col_13', label: 'Final Date', color: '#f59e0b' },
+            { key: 'col_14', label: 'Fitting Received', color: '#f59e0b' },
+            { key: 'col_15', label: 'Fitting In/Reture', color: '#f59e0b' },
+            { key: 'col_16', label: 'Ship Date', color: '#f59e0b' },
+            { key: 'col_17', label: 'User Name Log', color: '#f59e0b' }
         ];
 
         const reportsList = [
@@ -1883,9 +1900,9 @@ document.addEventListener('DOMContentLoaded', () => {
         function renderRow(perm, group) {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
-            
+
             let html = `<td style="padding: 12px 20px; font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.7); position: sticky; left: 0; background: #1a1a2e; z-index: 1;">${perm.label}</td>`;
-            
+
             usersToDisplay.forEach(user => {
                 const raw = userPermissions[user.id] || {};
                 const uPerm = (typeof raw === 'object') ? raw : { reports: {} };
@@ -1928,7 +1945,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (oldRole === 'fitting') {
                         ['col_2', 'col_3', 'col_4', 'col_9', 'col_11', 'col_12', 'col_13'].forEach(k => current[k] = true);
                     } else if (oldRole === 'fullaccess') {
-                        for(let i=1; i<=16; i++) current[`col_${i}`] = true;
+                        for (let i = 1; i <= 16; i++) current[`col_${i}`] = true;
                         current.reports = { totalPending: true, dateWise: true, latePis: true, totalOrder: true, fittingWise: true, fittingOutReport: true, shipPending: true };
                     }
                 }
