@@ -432,7 +432,8 @@ document.addEventListener('DOMContentLoaded', () => {
             fittingReceiveDate: '',
             shipDate: '',
             pcs: 1,
-            updatedBy: localStorage.getItem('activeUserName') || ''
+            updatedBy: localStorage.getItem('activeUserName') || '',
+            history: []
         };
     }
 
@@ -536,6 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><input type="date" data-field="shipDate" value="${data.shipDate || ''}"></td>
             <td style="font-size: 0.8rem; color: rgba(255,255,255,0.6); vertical-align: middle;" class="row-user-name">${data.updatedBy || ''}</td>
             <td style="text-align: center; white-space: nowrap;">
+                <button class="history-btn" title="View History" style="background: transparent; border: none; color: #10b981; cursor: pointer; padding: 5px; margin-right: 5px;"><i class="fas fa-history"></i></button>
                 <button class="edit-row-btn" title="Edit Row" style="background: transparent; border: none; color: var(--accent-color); cursor: pointer; padding: 5px; margin-right: 5px;"><i class="fas fa-edit"></i></button>
                 <button class="delete-btn" title="Delete Row"><i class="fas fa-trash"></i></button>
             </td>
@@ -577,6 +579,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const eventType = 'change';
             input.addEventListener(eventType, (e) => {
                 const targetField = e.target.getAttribute('data-field');
+                const oldValue = data[targetField] || '';
+                const newValue = e.target.value;
 
                 // --- CRITICAL FIX: Date Corruption Safeguard ---
                 // If it's a date field and it's currently in 'text' mode (showing dd-mm-yyyy),
@@ -602,13 +606,38 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                data[targetField] = e.target.value; // Bind directly to the object reference
+                data[targetField] = newValue; // Bind directly to the object reference
 
                 // Track who updated this row
                 const activeUserName = localStorage.getItem('activeUserName') || 'Unknown';
                 data.updatedBy = activeUserName;
                 const userCell = row.querySelector('.row-user-name');
                 if (userCell) userCell.textContent = activeUserName;
+
+                // Track History
+                if (oldValue !== newValue) {
+                    if (!data.history) data.history = [];
+                    const now = new Date();
+                    const formattedDate = now.toLocaleDateString('en-GB') + ' ' + now.toLocaleTimeString('en-US');
+                    
+                    const fieldLabels = {
+                        orderDate: 'Order Date', confirmationDate: 'Confirmation Date', date: 'Fitting Out Date',
+                        orderNo: 'Order No', designNo: 'Design No', fittingDetail: 'Fitting Detail',
+                        blouseSize: 'Blouse Size', customize: 'Customize', kotiSize: 'Koti Size',
+                        kurtaSize: 'Kurta Size', platform: 'Platform', pcs: 'Pieces',
+                        fittingName: 'Fitting Name', finalDate: 'Final Date', receiveDate: 'Fitting Receive Date',
+                        fittingReceiveDate: 'Fitting In Date', shipDate: 'Ship Date'
+                    };
+                    const fieldName = fieldLabels[targetField] || targetField;
+                    
+                    data.history.push({
+                        field: fieldName,
+                        oldValue: oldValue,
+                        newValue: newValue,
+                        user: activeUserName,
+                        timestamp: formattedDate
+                    });
+                }
 
                 saveToLocalStorage(); // Auto-save on every keystroke/change
             });
@@ -656,6 +685,43 @@ document.addEventListener('DOMContentLoaded', () => {
             const firstInput = row.querySelector('input');
             if (firstInput) firstInput.focus();
         });
+
+        const historyBtn = row.querySelector('.history-btn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', () => {
+                const modal = document.getElementById('historyModal');
+                const list = document.getElementById('historyList');
+                list.innerHTML = '';
+                
+                if (!data.history || data.history.length === 0) {
+                    list.innerHTML = '<li style="padding: 10px; color: rgba(255,255,255,0.5);">No history recorded yet.</li>';
+                } else {
+                    // Show latest first
+                    [...data.history].reverse().forEach(h => {
+                        const li = document.createElement('li');
+                        li.style.padding = '12px 10px';
+                        li.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                        li.style.backgroundColor = 'rgba(0,0,0,0.2)';
+                        li.style.marginBottom = '5px';
+                        li.style.borderRadius = '6px';
+                        
+                        li.innerHTML = `
+                            <div style="font-size: 0.8rem; color: #10b981; margin-bottom: 4px;">
+                                <i class="far fa-clock"></i> ${h.timestamp} - <strong style="color: #6366f1;">${h.user}</strong>
+                            </div>
+                            <div style="font-size: 0.95rem; margin-bottom: 4px;">Changed <strong style="color: #eab308;">${h.field}</strong></div>
+                            <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 8px;">
+                                <span style="text-decoration: line-through; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${h.oldValue || '(empty)'}</span> 
+                                <i class="fas fa-arrow-right" style="color: #4b5563; font-size: 0.7rem;"></i> 
+                                <span style="color: #fff; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${h.newValue || '(empty)'}</span>
+                            </div>
+                        `;
+                        list.appendChild(li);
+                    });
+                }
+                modal.style.display = 'flex';
+            });
+        }
 
         return row;
     }
@@ -1112,7 +1178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Determine if pending based on Fitting Receive Date (Empty or Null)
+                // Determine if pending purely based on Receive Date (if received, it is NOT pending)
                 if (!row.receiveDate || row.receiveDate.trim() === '') {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
@@ -1214,7 +1280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Check for empty Fitting Receive Date
+                // Determine if pending purely based on Receive Date
                 if (!row.receiveDate || row.receiveDate.trim() === '') {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
@@ -2233,5 +2299,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (e) => {
         if (e.target === platformModal) closeModal(platformModal);
         if (e.target === fittingModal) closeModal(fittingModal);
+        const historyModal = document.getElementById('historyModal');
+        if (historyModal && e.target === historyModal) {
+            historyModal.style.display = 'none';
+        }
     });
+
+    const closeHistoryModal = document.querySelector('.close-history-modal');
+    if (closeHistoryModal) {
+        closeHistoryModal.addEventListener('click', () => {
+            document.getElementById('historyModal').style.display = 'none';
+        });
+    }
 });
