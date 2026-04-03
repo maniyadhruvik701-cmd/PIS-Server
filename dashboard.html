@@ -628,6 +628,21 @@
                 </div>
             </div>
 
+            <!-- History Modal -->
+            <div id="historyModal" class="modal">
+                <div class="modal-content" style="max-width: 600px;">
+                    <span class="close-modal close-history-modal">&times;</span>
+                    <h2>Entry History</h2>
+                    <p style="color: rgba(255, 255, 255, 0.5); font-size: 0.9rem; margin-bottom: 15px;">Track who changed what and when for this specific Design/Order.</p>
+                    
+                    <div class="history-list-container" style="max-height: 400px; overflow-y: auto;">
+                        <ul id="historyList" style="list-style: none; padding: 0; margin: 0;">
+                            <!-- History items will appear here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- jsPDF and AutoTable for PDF Generation -->
             <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
             <script
