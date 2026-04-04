@@ -179,10 +179,13 @@
 
             <!-- Reports Section (Hidden by default) -->
             <div class="reports-container" id="reportsSection" style="display: none;">
-                <h2 style="margin-bottom: 20px;">Total Pending</h2>
+                <h2 style="margin-bottom: 5px;">Total Pending</h2>
+                <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
+                    This report shows orders that have **NO Fitting Receive Date** and where the **Final Date (Deadline)** falls within your selected range.
+                </p>
                 <div class="report-controls">
-                    <div class="date-group">
-                        <label>Start Date:</label>
+                    <div class="date-group" title="Report based on Final Date (Deadline)">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="startDate">
                     </div>
                     <div class="date-group">
@@ -231,10 +234,13 @@
 
             <!-- Date Wise Pending Section (Hidden by default) -->
             <div class="reports-container" id="dateWiseSection" style="display: none;">
-                <h2 style="margin-bottom: 20px;">Date Wise Pending</h2>
+                <h2 style="margin-bottom: 5px;">Date Wise Pending</h2>
+                <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
+                    This report groups pending orders by their **Final Date (Deadline)** and shows totals for items with **NO Fitting Receive Date**.
+                </p>
                 <div class="report-controls">
-                    <div class="date-group">
-                        <label>Start Date:</label>
+                    <div class="date-group" title="Report based on Final Date (Deadline)">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="dateWiseStartDate">
                     </div>
                     <div class="date-group">
@@ -284,10 +290,13 @@
 
             <!-- Late PIS Report Section (Hidden by default) -->
             <div class="reports-container" id="latePisSection" style="display: none;">
-                <h2 style="margin-bottom: 20px;">Late PIS Report</h2>
+                <h2 style="margin-bottom: 5px;">Late PIS Report</h2>
+                <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
+                    This report analyzes order performance based on **Ship Date**. It calculates delays by comparing actual shipping vs deadlines.
+                </p>
                 <div class="report-controls">
-                    <div class="date-group">
-                        <label>Start Date:</label>
+                    <div class="date-group" title="Report based on Ship Date">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Ship Date)</span>:</label>
                         <input type="date" id="lateStartDate">
                     </div>
                     <div class="date-group">
@@ -353,10 +362,13 @@
             </div>
 
             <div class="reports-container" id="totalOrderSection" style="display: none;">
-                <h2 style="margin-bottom: 20px;">Total Order</h2>
+                <h2 style="margin-bottom: 5px;">Total Order</h2>
+                <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
+                    This report calculates the total quantity of orders based on their **Final Date (Deadline)**, grouped by Platform and Design No.
+                </p>
                 <div class="report-controls">
-                    <div class="date-group">
-                        <label>Start Date:</label>
+                    <div class="date-group" title="Report based on Final Date (Deadline)">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="totalOrderStartDate">
                     </div>
                     <div class="date-group">
@@ -446,8 +458,8 @@
                 </div>
 
                 <div class="report-controls">
-                    <div class="date-group">
-                        <label>Start Date:</label>
+                    <div class="date-group" title="Report based on Fitting Out Date">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Fitting Out Date)</span>:</label>
                         <input type="date" id="fittingOutStartDate">
                     </div>
                     <div class="date-group">
@@ -477,13 +489,15 @@
                 <div class="table-header-controls">
                     <div class="left-controls">
                         <h2>Ship Pending Report</h2>
-                        <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">Analyze ship status by date range</p>
+                        <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">
+                            Orders where **Ship Date is empty** and the **Final Date (Deadline)** is within the specified range.
+                        </p>
                     </div>
                 </div>
 
                 <div class="report-controls">
-                    <div class="date-group">
-                        <label>Start Date:</label>
+                    <div class="date-group" title="Report based on Final Date (Deadline)">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="shipPendingStartDate">
                     </div>
                     <div class="date-group">
