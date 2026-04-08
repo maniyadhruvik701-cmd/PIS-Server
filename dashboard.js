@@ -1188,9 +1188,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // Filter by Final Date (Deadline)
-            if (!row.finalDate) return;
-            const filterDate = row.finalDate;
+            // Filter by Confirmation Date (nakhaygeli hoy te pending ma)
+            if (!row.confirmationDate) return;
+            const filterDate = row.confirmationDate;
 
             // Filter by date range
             if (filterDate >= startDate && filterDate <= endDate) {
@@ -1291,9 +1291,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // Filter by Final Date (Deadline)
-            if (!row.finalDate) return;
-            const filterDate = row.finalDate;
+            // Filter by Confirmation Date (nakhaygeli hoy te pending ma)
+            if (!row.confirmationDate) return;
+            const filterDate = row.confirmationDate;
 
             if (filterDate >= startDate && filterDate <= endDate) {
                 // Filter by Fitting Name if selected
@@ -1316,7 +1316,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Check if we already have an entry for this Deadline + Design + Platform + OrderNo
                         // We use row.finalDate as the 'date' property for grouping
                         const existingEntry = reportData.find(item =>
-                            item.date === row.finalDate &&
+                            item.date === row.confirmationDate &&
                             item.design === design &&
                             item.platform === platform &&
                             item.orderNo === orderNo &&
@@ -1329,7 +1329,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             existingEntry.count += itemsInRow;
                         } else {
                             reportData.push({
-                                date: row.finalDate,
+                                date: row.confirmationDate,
                                 orderNo,
                                 design,
                                 platform,
