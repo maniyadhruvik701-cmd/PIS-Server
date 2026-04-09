@@ -1207,7 +1207,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const kotiSize = row.kotiSize || "-";
                     const kurtaSize = row.kurtaSize || "-";
 
-                    const key = `${orderNo}| ${design}| ${platform}| ${fittingName}| ${blouseSize}| ${kotiSize}| ${kurtaSize}`;
+                    const fittingDetail = row.fittingDetail || "-";
+
+                    const key = `${orderNo}| ${design}| ${platform}| ${fittingName}| ${blouseSize}| ${kotiSize}| ${kurtaSize}| ${fittingDetail}`;
 
                     if (!reportMap[key]) {
                         reportMap[key] = {
@@ -1218,6 +1220,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             blouseSize,
                             kotiSize,
                             kurtaSize,
+                            fittingDetail,
                             count: 0
                         };
                     }
@@ -1253,6 +1256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${data.blouseSize}</td>
                     <td>${data.kotiSize}</td>
                     <td>${data.kurtaSize}</td>
+                    <td>${data.fittingDetail}</td>
                     <td>${data.count}</td>
                 `;
                 reportTableBody.appendChild(tr);
@@ -1308,6 +1312,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const blouseSize = row.blouseSize || "-";
                     const kotiSize = row.kotiSize || "-";
                     const kurtaSize = row.kurtaSize || "-";
+                    const fittingDetail = row.fittingDetail || "-";
 
                     // Count using pcs field
                     let itemsInRow = parseInt(row.pcs) || 1;
@@ -1323,7 +1328,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             item.fittingName === fittingName &&
                             item.blouseSize === blouseSize &&
                             item.kotiSize === kotiSize &&
-                            item.kurtaSize === kurtaSize
+                            item.kurtaSize === kurtaSize &&
+                            item.fittingDetail === fittingDetail
                         );
                         if (existingEntry) {
                             existingEntry.count += itemsInRow;
@@ -1337,6 +1343,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 blouseSize,
                                 kotiSize,
                                 kurtaSize,
+                                fittingDetail,
                                 count: itemsInRow
                             });
                         }
@@ -1378,6 +1385,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${item.blouseSize}</td>
                 <td>${item.kotiSize}</td>
                 <td>${item.kurtaSize}</td>
+                <td>${item.fittingDetail}</td>
                 <td>${item.count}</td>
             `;
             dateWiseTableBody.appendChild(tr);
