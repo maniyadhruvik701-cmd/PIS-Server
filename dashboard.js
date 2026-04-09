@@ -1188,17 +1188,25 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // Filter by Confirmation Date (nakhaygeli hoy te pending ma)
-            if (!row.confirmationDate) return;
-            const filterDate = row.confirmationDate;
+            // Filter by Final Date
+            if (!row.finalDate) return;
+            const filterDate = row.finalDate;
+            const isPending = !row.receiveDate || row.receiveDate.trim() === '';
 
             // Filter by date range
             if (filterDate >= startDate && filterDate <= endDate) {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Determine if pending purely based on Receive Date (if received, it is NOT pending)
-                if (!row.receiveDate || row.receiveDate.trim() === '') {
+                // Logic: Include if (has confirmationDate) OR (no confirmationDate AND receiveDate is empty)
+                let shouldInclude = false;
+                if (row.confirmationDate) {
+                    shouldInclude = true; 
+                } else if (isPending) {
+                    shouldInclude = true;
+                }
+
+                if (shouldInclude) {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
