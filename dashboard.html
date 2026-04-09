@@ -181,11 +181,11 @@
             <div class="reports-container" id="reportsSection" style="display: none;">
                 <h2 style="margin-bottom: 5px;">Total Pending</h2>
                 <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
-                    This report shows orders that have **NO Fitting Receive Date** and where the **Confirmation Date** falls within your selected range (whether or not a Final Date is entered).
+                    This report shows all orders with a **Confirmation Date** OR those without one but having **NO Fitting Receive Date**, filtered by the **Final Date** range.
                 </p>
                 <div class="report-controls">
-                    <div class="date-group" title="Report based on Confirmation Date">
-                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Confirm Date)</span>:</label>
+                    <div class="date-group" title="Report based on Final Date (Deadline)">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="startDate">
                     </div>
                     <div class="date-group">
