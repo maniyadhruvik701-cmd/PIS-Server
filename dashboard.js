@@ -114,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ROWS_PER_PAGE = 20;
     let currentPage = 1;
     let tableData = []; // Array of Objects to store data
+    let trashData = []; // Array to store deleted items
     let platformOptions = [];
     let fittingOptions = [];
     let fittingDetailOptions = [];
@@ -230,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Reference to Global Data
                     dbRef = database.ref('pis_global_data');
+                    const trashRef = database.ref('pis_trash_data');
 
                     updateFirebaseStatus('connected');
                     isFirebaseConnected = true;
@@ -252,15 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // 1. Update existing objects and add new ones
                                 data.forEach((newRow, i) => {
                                     if (tableData[i]) {
-                                        // Check if this specific row is being edited at any field
-                                        let isThisRowEditing = false;
-                                        if (isUserTyping) {
-                                            const rowEl = activeEl.closest('tr');
-                                            // Each rendered row has a displayIndex + 1 in the first cell
-                                            // But since we reverse for display, we check the object itself if possible
-                                            // Actually, since we use Object.assign, the UI row's reference to tableData[i] 
-                                            // remains valid. The user's typed value will win on next 'change' event.
-                                        }
                                         Object.assign(tableData[i], newRow);
                                     } else {
                                         tableData.push({ ...newRow });
@@ -280,9 +273,28 @@ document.addEventListener('DOMContentLoaded', () => {
                                     if (currentPage > totalPages) currentPage = totalPages;
                                     renderTable();
                                     console.log("☁️ Data Synced from Cloud (In-place)");
-                                } else {
-                                    console.log("☁️ Cloud update merged in-place, UI will refresh after you finish typing.");
                                 }
+                            }
+                        }
+                    });
+
+                    // --- Trash Data Listener ---
+                    trashRef.on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data && Array.isArray(data)) {
+                            if (JSON.stringify(data) !== JSON.stringify(trashData)) {
+                                trashData = data;
+                                localStorage.setItem('pis_trash_data', JSON.stringify(trashData));
+                                if (trashSection.style.display !== 'none') {
+                                    renderTrashTable();
+                                }
+                                console.log("☁️ Trash Synced from Cloud");
+                            }
+                        } else if (data === null) {
+                            trashData = [];
+                            localStorage.setItem('pis_trash_data', JSON.stringify([]));
+                            if (trashSection.style.display !== 'none') {
+                                renderTrashTable();
                             }
                         }
                     });
@@ -398,6 +410,13 @@ document.addEventListener('DOMContentLoaded', () => {
             tableData.push(addNewEntryObject());
             currentPage = 1;
         }
+
+        // Load Trash
+        const storedTrash = localStorage.getItem('pis_trash_data');
+        if (storedTrash) {
+            trashData = JSON.parse(storedTrash);
+        }
+
         renderTable();
     }
 
@@ -405,10 +424,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Save Local
         localStorage.setItem(DATA_KEY, JSON.stringify(tableData));
         localStorage.setItem('pis_current_page', currentPage);
+        localStorage.setItem('pis_trash_data', JSON.stringify(trashData));
 
         // 2. Sync to Cloud (if connected)
         if (isFirebaseConnected && dbRef) {
             dbRef.set(tableData).catch(err => console.error("Cloud Save Error:", err));
+            firebase.database().ref('pis_trash_data').set(trashData).catch(err => console.error("Cloud Trash Save Error:", err));
         }
     }
 
@@ -461,6 +482,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function deleteRow(item) {
         const index = tableData.indexOf(item);
         if (index > -1) {
+            // Add to Trash
+            const deletedItem = {
+                ...item,
+                deletedAt: new Date().toISOString(),
+                deletedBy: localStorage.getItem('activeUserName') || 'Unknown'
+            };
+            trashData.unshift(deletedItem); // Latest deleted at top
+            if (trashData.length > 500) trashData.pop(); // Keep last 500 items
+
             tableData.splice(index, 1);
         }
         saveToLocalStorage();
@@ -474,12 +504,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearAll() {
-        if (confirm("Are you sure you want to clear all data? This cannot be undone.")) {
+        if (confirm("Are you sure you want to clear all data? All items will be moved to the Trash.")) {
+            // Move all to Trash
+            const deletedAt = new Date().toISOString();
+            const deletedBy = localStorage.getItem('activeUserName') || 'Unknown';
+            const itemsToTrash = tableData.filter(r => r.orderNo || r.designNo).map(r => ({
+                ...r,
+                deletedAt,
+                deletedBy
+            }));
+
+            trashData = itemsToTrash.concat(trashData).slice(0, 500);
+
             tableData = [];
             tableData.push(addNewEntryObject()); // Keep one empty row
             saveToLocalStorage();
             currentPage = 1;
             renderTable();
+            alert("All data moved to Trash.");
         }
     }
 
@@ -862,17 +904,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (confirm(`Are you sure you want to delete entries from Sr No ${startSr} to ${endSr}?`)) {
+            if (confirm(`Are you sure you want to delete entries from Sr No ${startSr} to ${endSr}? Items will be moved to Trash.`)) {
                 // Sr No 300 is at index 299
                 const startIdx = startSr - 1;
                 const count = endSr - startIdx;
 
+                const deletedAt = new Date().toISOString();
+                const deletedBy = localStorage.getItem('activeUserName') || 'Unknown';
+                const itemsToTrash = tableData.slice(startIdx, startIdx + count).map(r => ({
+                    ...r,
+                    deletedAt,
+                    deletedBy
+                }));
+
+                trashData = itemsToTrash.concat(trashData).slice(0, 500);
                 tableData.splice(startIdx, count);
 
                 saveToLocalStorage();
                 renderTable();
                 deleteRangeInput.value = '';
-                alert(`Successfully deleted ${count} entries.`);
+                alert(`Successfully moved ${count} entries to Trash.`);
             }
         });
     }
@@ -916,10 +967,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const fittingOutReportSection = document.getElementById('fittingOutReportSection');
     const shipPendingSection = document.getElementById('shipPendingSection');
     const permissionsSection = document.getElementById('permissionsSection');
-    const settingsSection = document.getElementById('settingsSection');
+    const navTrash = document.getElementById('navTrash');
+    const trashSection = document.getElementById('trashSection');
 
-    const sections = [dataSection, reportsSection, dateWiseSection, latePisSection, totalOrderSection, fittingWiseSection, fittingOutReportSection, shipPendingSection, permissionsSection, settingsSection];
-    const navs = [navData, navReports, navDateWise, navLatePis, navTotalOrder, navFittingWise, navFittingOutReport, navShipPending, navPermissions, navSettings];
+    const sections = [dataSection, reportsSection, dateWiseSection, latePisSection, totalOrderSection, fittingWiseSection, fittingOutReportSection, shipPendingSection, permissionsSection, settingsSection, trashSection];
+    const navs = [navData, navReports, navDateWise, navLatePis, navTotalOrder, navFittingWise, navFittingOutReport, navShipPending, navPermissions, navSettings, navTrash];
 
     // Global Permissions State
     let userPermissions = {};
@@ -958,6 +1010,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navSettings) navSettings.addEventListener('click', () => showSection(settingsSection, navSettings));
     if (navFittingOutReport) navFittingOutReport.addEventListener('click', () => showSection(fittingOutReportSection, navFittingOutReport));
     if (navShipPending) navShipPending.addEventListener('click', () => showSection(shipPendingSection, navShipPending));
+    if (navTrash) navTrash.addEventListener('click', () => {
+        showSection(trashSection, navTrash);
+        renderTrashTable();
+    });
 
     // --- Backup & Restore Logic ---
     const backupDataBtn = document.getElementById('backupDataBtn');
@@ -1053,6 +1109,76 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Error parsing JSON: " + err.message);
         }
     });
+
+    // --- Trash Table Rendering & Actions ---
+    function renderTrashTable() {
+        const tbody = document.getElementById('trashTbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (trashData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Trash is empty.</td></tr>';
+            return;
+        }
+
+        trashData.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.orderNo || '-'}</td>
+                <td>${item.designNo || '-'}</td>
+                <td>${item.platform || '-'}</td>
+                <td><span style="font-size:0.8rem; color:rgba(255,255,255,0.5)">${item.deletedBy || 'Admin'}</span></td>
+                <td>
+                    <button class="btn-primary restore-btn" data-index="${index}" style="padding: 5px 10px; font-size: 0.7rem; background: #10b981;">Restore</button>
+                    <button class="btn-danger permanent-delete-btn" data-index="${index}" style="padding: 5px 10px; font-size: 0.7rem;">Delete Forever</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Attach listeners
+        tbody.querySelectorAll('.restore-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(e.target.dataset.index);
+                restoreFromTrash(idx);
+            });
+        });
+
+        tbody.querySelectorAll('.permanent-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(e.target.dataset.index);
+                if (confirm("Delete this item forever?")) {
+                    trashData.splice(idx, 1);
+                    saveToLocalStorage();
+                    renderTrashTable();
+                }
+            });
+        });
+    }
+
+    function restoreFromTrash(index) {
+        const item = trashData[index];
+        if (item) {
+            // Remove trash-specific fields
+            const { deletedAt, deletedBy, ...restoredItem } = item;
+            tableData.unshift(restoredItem);
+            trashData.splice(index, 1);
+            saveToLocalStorage();
+            renderTrashTable();
+            alert("Item restored to the main table!");
+        }
+    }
+
+    const emptyTrashBtn = document.getElementById('emptyTrashBtn');
+    if (emptyTrashBtn) {
+        emptyTrashBtn.addEventListener('click', () => {
+            if (confirm("Are you sure you want to empty the trash? This cannot be undone.")) {
+                trashData = [];
+                saveToLocalStorage();
+                renderTrashTable();
+            }
+        });
+    }
 
     // --- Late PIS Report Logic ---
     const generateLateReportBtn = document.getElementById('generateLateReportBtn');
@@ -1188,19 +1314,36 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // Filter by Order Date range
-            if (!row.orderDate) return;
-            const filterDate = row.orderDate;
+            // --- Improved Date Filtering Logic ---
+            // Include if EITHER Order Date is in range OR Final Date is in range
+            const oDate = row.orderDate || '';
+            const fDate = row.finalDate || '';
+            
+            const isOrderInRange = oDate >= startDate && oDate <= endDate;
+            const isFinalInRange = fDate >= startDate && fDate <= endDate;
 
-            if (filterDate >= startDate && filterDate <= endDate) {
+            if (isOrderInRange || isFinalInRange) {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Only include rows that have a confirmationDate
-                if (!row.confirmationDate) return;
-                const shouldInclude = true;
+                // --- Simplified Pending Logic ---
+                const hasConf = row.confirmationDate && row.confirmationDate.trim() !== '';
+                const hasFinal = row.finalDate && row.finalDate.trim() !== '';
+                const noFit = !row.receiveDate || row.receiveDate.trim() === '';
+                const noShip = !row.shipDate || row.shipDate.trim() === '';
 
-                if (shouldInclude) {
+                // Pending if:
+                // (Confirmed AND not Shipped) OR (Has Deadline AND not Received AND not Shipped)
+                let isPending = false;
+                if (noShip) {
+                    if (hasConf) {
+                        isPending = true;
+                    } else if (hasFinal && noFit) {
+                        isPending = true;
+                    }
+                }
+
+                if (isPending) {
                     const design = row.designNo || "Unknown";
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
@@ -1298,42 +1441,58 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // Filter by Order Date
-            if (!row.orderDate) return;
-            const filterDate = row.orderDate;
+            // --- Improved Date Filtering Logic ---
+            const oDate = row.orderDate || '';
+            const fDate = row.finalDate || '';
+            
+            const isOrderInRange = oDate >= startDate && oDate <= endDate;
+            const isFinalInRange = fDate >= startDate && fDate <= endDate;
 
-            if (filterDate >= startDate && filterDate <= endDate) {
+            if (isOrderInRange || isFinalInRange) {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Only include rows that have a confirmationDate (Total Pending જેવી લોજિક)
-                if (!row.confirmationDate) return;
+                // --- Simplified Pending Logic ---
+                const hasConf = row.confirmationDate && row.confirmationDate.trim() !== '';
+                const hasFinal = row.finalDate && row.finalDate.trim() !== '';
+                const noFit = !row.receiveDate || row.receiveDate.trim() === '';
+                const noShip = !row.shipDate || row.shipDate.trim() === '';
 
-                const design = row.designNo || "Unknown";
-                const platform = row.platform || "-";
-                const orderNo = row.orderNo || "-";
-                const fittingName = row.fittingName || "-";
-                const blouseSize = row.blouseSize || "-";
-                const kotiSize = row.kotiSize || "-";
-                const kurtaSize = row.kurtaSize || "-";
-                const fittingDetail = row.fittingDetail || "-";
+                let isPending = false;
+                if (noShip) {
+                    if (hasConf) {
+                        isPending = true;
+                    } else if (hasFinal && noFit) {
+                        isPending = true;
+                    }
+                }
 
-                // Count using pcs field
-                let itemsInRow = parseInt(row.pcs) || 1;
+                if (isPending) {
+                    const design = row.designNo || "Unknown";
+                    const platform = row.platform || "-";
+                    const orderNo = row.orderNo || "-";
+                    const fittingName = row.fittingName || "-";
+                    const blouseSize = row.blouseSize || "-";
+                    const kotiSize = row.kotiSize || "-";
+                    const kurtaSize = row.kurtaSize || "-";
+                    const fittingDetail = row.fittingDetail || "-";
 
-                if (itemsInRow > 0) {
-                    // Group by Order Date + OrderNo + Design + Platform
-                    const existingEntry = reportData.find(item =>
-                        item.date === row.orderDate &&
-                        item.design === design &&
-                        item.platform === platform &&
-                        item.orderNo === orderNo &&
-                        item.fittingName === fittingName &&
-                        item.blouseSize === blouseSize &&
-                        item.kotiSize === kotiSize &&
-                        item.kurtaSize === kurtaSize &&
-                        item.fittingDetail === fittingDetail
-                    );
+                    // Count using pcs field
+                    let itemsInRow = parseInt(row.pcs) || 1;
+
+                    if (itemsInRow > 0) {
+                        // Group by Order Date + OrderNo + Design + Platform
+                        const existingEntry = reportData.find(item =>
+                            item.date === row.orderDate &&
+                            item.design === design &&
+                            item.platform === platform &&
+                            item.orderNo === orderNo &&
+                            item.fittingName === fittingName &&
+                            item.blouseSize === blouseSize &&
+                            item.kotiSize === kotiSize &&
+                            item.kurtaSize === kurtaSize &&
+                            item.fittingDetail === fittingDetail
+                        );
                         if (existingEntry) {
                             existingEntry.count += itemsInRow;
                         } else {
@@ -1353,6 +1512,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         grandTotal += itemsInRow;
                     }
                 }
+            }
         });
 
         // Sort by Date then by Design No
@@ -1844,7 +2004,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'navTotalOrder', visible: !!reports.totalOrder },
             { id: 'navFittingWise', visible: !!reports.fittingWise },
             { id: 'navFittingOutReport', visible: !!reports.fittingOutReport },
-            { id: 'navShipPending', visible: !!reports.shipPending }
+            { id: 'navShipPending', visible: !!reports.shipPending },
+            { id: 'navTrash', visible: !!reports.trash }
         ];
 
         // "Data" tab visibility (only if they have at least one column permission)
@@ -1999,7 +2160,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'totalOrder', label: 'Total Order', color: '#fbbf24' },
             { key: 'fittingWise', label: 'Fitting Wise', color: '#34d399' },
             { key: 'fittingOutReport', label: 'Fitting Out Report', color: '#2dd4bf' },
-            { key: 'shipPending', label: 'Ship Pending', color: '#f472b6' }
+            { key: 'shipPending', label: 'Ship Pending', color: '#f472b6' },
+            { key: 'trash', label: 'Trash / Recycle Bin', color: '#6b7280' }
         ];
 
         const usersToDisplay = ALL_USERS.filter(u => u.id !== 'vishal' && u.id !== 'piyush');
