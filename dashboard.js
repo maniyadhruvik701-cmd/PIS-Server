@@ -1188,23 +1188,17 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // Filter by Final Date
-            if (!row.finalDate) return;
-            const filterDate = row.finalDate;
-            const isPending = !row.receiveDate || row.receiveDate.trim() === '';
+            // Filter by Order Date range
+            if (!row.orderDate) return;
+            const filterDate = row.orderDate;
 
-            // Filter by date range
             if (filterDate >= startDate && filterDate <= endDate) {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Logic: Include if (has confirmationDate) OR (no confirmationDate AND receiveDate is empty)
-                let shouldInclude = false;
-                if (row.confirmationDate) {
-                    shouldInclude = true; 
-                } else if (isPending) {
-                    shouldInclude = true;
-                }
+                // Only include rows that have a confirmationDate
+                if (!row.confirmationDate) return;
+                const shouldInclude = true;
 
                 if (shouldInclude) {
                     const design = row.designNo || "Unknown";
@@ -1214,13 +1208,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const blouseSize = row.blouseSize || "-";
                     const kotiSize = row.kotiSize || "-";
                     const kurtaSize = row.kurtaSize || "-";
-
+                    const confirmationDate = row.confirmationDate || "-";
                     const fittingDetail = row.fittingDetail || "-";
 
                     const key = `${orderNo}| ${design}| ${platform}| ${fittingName}| ${blouseSize}| ${kotiSize}| ${kurtaSize}| ${fittingDetail}`;
 
                     if (!reportMap[key]) {
                         reportMap[key] = {
+                            confirmationDate,
                             orderNo,
                             design,
                             platform,
@@ -1236,7 +1231,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Count using pcs field
                     let itemsInRow = parseInt(row.pcs) || 1;
 
-                    // If itemsInRow > 0, add to map
                     if (itemsInRow > 0) {
                         reportMap[key].count += itemsInRow;
                         grandTotal += itemsInRow;
@@ -1256,6 +1250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Only show designs that have at least one pending item
             if (data.count > 0) {
                 const tr = document.createElement('tr');
+                // Format confirmationDate as dd-mm-yyyy
                 tr.innerHTML = `
                     <td>${data.orderNo}</td>
                     <td>${data.design}</td>
@@ -1272,7 +1267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (keys.length === 0 || grandTotal === 0) {
-            reportTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No pending data found for this date range.</td></tr>';
+            reportTableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No pending data found for this date range.</td></tr>';
         }
 
         // Update Grand Totals
@@ -1303,47 +1298,47 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // Filter by Confirmation Date (nakhaygeli hoy te pending ma)
-            if (!row.confirmationDate) return;
-            const filterDate = row.confirmationDate;
+            // Filter by Order Date
+            if (!row.orderDate) return;
+            const filterDate = row.orderDate;
 
             if (filterDate >= startDate && filterDate <= endDate) {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // Determine if pending purely based on Receive Date
-                if (!row.receiveDate || row.receiveDate.trim() === '') {
-                    const design = row.designNo || "Unknown";
-                    const platform = row.platform || "-";
-                    const orderNo = row.orderNo || "-";
-                    const fittingName = row.fittingName || "-";
-                    const blouseSize = row.blouseSize || "-";
-                    const kotiSize = row.kotiSize || "-";
-                    const kurtaSize = row.kurtaSize || "-";
-                    const fittingDetail = row.fittingDetail || "-";
+                // Only include rows that have a confirmationDate (Total Pending જેવી લોજિક)
+                if (!row.confirmationDate) return;
 
-                    // Count using pcs field
-                    let itemsInRow = parseInt(row.pcs) || 1;
+                const design = row.designNo || "Unknown";
+                const platform = row.platform || "-";
+                const orderNo = row.orderNo || "-";
+                const fittingName = row.fittingName || "-";
+                const blouseSize = row.blouseSize || "-";
+                const kotiSize = row.kotiSize || "-";
+                const kurtaSize = row.kurtaSize || "-";
+                const fittingDetail = row.fittingDetail || "-";
 
-                    if (itemsInRow > 0) {
-                        // Check if we already have an entry for this Deadline + Design + Platform + OrderNo
-                        // We use row.finalDate as the 'date' property for grouping
-                        const existingEntry = reportData.find(item =>
-                            item.date === row.confirmationDate &&
-                            item.design === design &&
-                            item.platform === platform &&
-                            item.orderNo === orderNo &&
-                            item.fittingName === fittingName &&
-                            item.blouseSize === blouseSize &&
-                            item.kotiSize === kotiSize &&
-                            item.kurtaSize === kurtaSize &&
-                            item.fittingDetail === fittingDetail
-                        );
+                // Count using pcs field
+                let itemsInRow = parseInt(row.pcs) || 1;
+
+                if (itemsInRow > 0) {
+                    // Group by Order Date + OrderNo + Design + Platform
+                    const existingEntry = reportData.find(item =>
+                        item.date === row.orderDate &&
+                        item.design === design &&
+                        item.platform === platform &&
+                        item.orderNo === orderNo &&
+                        item.fittingName === fittingName &&
+                        item.blouseSize === blouseSize &&
+                        item.kotiSize === kotiSize &&
+                        item.kurtaSize === kurtaSize &&
+                        item.fittingDetail === fittingDetail
+                    );
                         if (existingEntry) {
                             existingEntry.count += itemsInRow;
                         } else {
                             reportData.push({
-                                date: row.confirmationDate,
+                                date: row.orderDate,
                                 orderNo,
                                 design,
                                 platform,
@@ -1358,7 +1353,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         grandTotal += itemsInRow;
                     }
                 }
-            }
         });
 
         // Sort by Date then by Design No
@@ -1381,7 +1375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reportData.forEach(item => {
             // Format Date to DD-MM-YYYY
             const [year, month, day] = item.date.split('-');
-            const formattedDate = `${day} -${month} -${year} `;
+            const formattedDate = `${day}-${month}-${year}`;
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
