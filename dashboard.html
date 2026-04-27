@@ -181,15 +181,15 @@
             <div class="reports-container" id="reportsSection" style="display: none;">
                 <h2 style="margin-bottom: 5px;">Total Pending</h2>
                 <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
-                    This report shows all orders with a **Confirmation Date** OR those without one but having **NO Fitting Receive Date**, filtered by the **Final Date** range.
+                    This report shows all orders with a Confirmation Date, filtered by <strong>Order Date</strong> range.
                 </p>
                 <div class="report-controls">
-                    <div class="date-group" title="Report based on Final Date (Deadline)">
-                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
+                    <div class="date-group" title="Report based on Order Date">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
                         <input type="date" id="startDate">
                     </div>
                     <div class="date-group">
-                        <label>End Date:</label>
+                        <label>End Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
                         <input type="date" id="endDate">
                     </div>
                     <div class="date-group">
@@ -225,7 +225,7 @@
                         </tbody>
                         <tfoot>
                             <tr style="background: rgba(0, 198, 255, 0.2); font-weight: bold;">
-                                <td colspan="8" style="text-align: left; padding-left: 10px;">Grand Total</td>
+                                <td colspan="9" style="text-align: left; padding-left: 10px;">Grand Total</td>
                                 <td id="grandTotal">0</td>
                             </tr>
                         </tfoot>
@@ -237,15 +237,15 @@
             <div class="reports-container" id="dateWiseSection" style="display: none;">
                 <h2 style="margin-bottom: 5px;">Date Wise Pending</h2>
                 <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
-                    This report groups pending orders by their **Confirmation Date** and shows totals for items with **NO Fitting Receive Date** (whether or not a Final Date is entered).
+                    This report groups pending orders by their <strong>Order Date</strong> and shows items with NO Fitting Receive Date.
                 </p>
                 <div class="report-controls">
-                    <div class="date-group" title="Report based on Confirmation Date">
-                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Confirm Date)</span>:</label>
+                    <div class="date-group" title="Report based on Order Date">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
                         <input type="date" id="dateWiseStartDate">
                     </div>
                     <div class="date-group">
-                        <label>End Date:</label>
+                        <label>End Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
                         <input type="date" id="dateWiseEndDate">
                     </div>
                     <div class="date-group">
@@ -282,7 +282,7 @@
                         </tbody>
                         <tfoot>
                             <tr style="background: rgba(0, 198, 255, 0.2); font-weight: bold;">
-                                <td colspan="9" style="text-align: left; padding-left: 10px;">Grand Total</td>
+                                <td colspan="10" style="text-align: left; padding-left: 10px;">Grand Total</td>
                                 <td id="dateWiseGrandTotal">0</td>
                             </tr>
                         </tfoot>
