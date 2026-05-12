@@ -7,17 +7,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const currentUser = JSON.parse(currentUserRaw);
 
-    // Force redirection to role-select on refresh by clearing role session
-    // (User requested: refresh kare etle user select j khule)
+    // Force redirection to role-select on refresh or direct URL access
+    const navEntries = performance.getEntriesByType('navigation');
+    const isRefresh = navEntries.length > 0 && navEntries[0].type === 'reload';
     const isInitialLogin = sessionStorage.getItem('pis_session_active');
-    if (!isInitialLogin) {
+
+    if (isRefresh || !isInitialLogin) {
         localStorage.removeItem('accessRole');
         localStorage.removeItem('activeUserId');
         localStorage.removeItem('activeUserName');
+        sessionStorage.removeItem('pis_session_active');
         window.location.href = 'role-select.html';
         return;
     }
-    // Mark session as active so they can navigate tabs, but refresh still triggers above
+    // Clear flag so next refresh/navigation triggers redirection
     sessionStorage.removeItem('pis_session_active');
 
     // --- Role Check ---
@@ -115,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     let tableData = []; // Array of Objects to store data
     let trashData = []; // Array to store deleted items
+    let warnedDuplicates = new Set(); // Track warned duplicate numbers globally in session
     let platformOptions = [];
     let fittingOptions = [];
     let fittingDetailOptions = [];
@@ -344,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const data = snapshot.val();
                         if (data) {
                             userPermissions = data;
+                            localStorage.setItem('pis_cached_permissions', JSON.stringify(data));
                             // Update UI layout immediately when permissions change
                             applyRoleAccess();
 
@@ -704,26 +709,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // Duplicate entry check on 'blur' event
             if (field === 'orderNo' || field === 'designNo') {
                 input.addEventListener('blur', function () {
-                    const orderNo = (data.orderNo || '').toString().trim();
+                    const val = (this.value || '').toString().trim();
 
-                    // Only check if Order No is filled (don't wait for Design No)
-                    if (orderNo) {
+                    if (val) {
                         const exists = tableData.some(r =>
                             r !== data &&
-                            (r.orderNo || '').toString().trim().toLowerCase() === orderNo.toLowerCase()
+                            (field === 'orderNo' ? (r.orderNo || '') : (r.designNo || '')).toString().trim().toLowerCase() === val.toLowerCase()
                         );
 
                         if (exists) {
-                            // Highlight the duplicate instead of deleting immediately
-                            input.style.borderColor = "#ef4444";
-                            input.style.boxShadow = "0 0 10px rgba(239, 68, 68, 0.3)";
-
-                            setTimeout(() => {
-                                alert(`Warning: Order No "${orderNo}" already exists in the table!`);
-                            }, 100);
-                        } else {
-                            input.style.borderColor = "";
-                            input.style.boxShadow = "";
+                            // Only alert if we haven't warned for this specific value in this session yet
+                            const warnKey = `${field}_${val.toLowerCase()}`;
+                            if (!warnedDuplicates.has(warnKey)) {
+                                setTimeout(() => {
+                                    alert(`Warning: ${field === 'orderNo' ? 'Order' : 'Design'} No "${val}" already exists in the table!`);
+                                    warnedDuplicates.add(warnKey); // Mark this value as warned globally
+                                }, 100);
+                            }
                         }
                     }
                 });
@@ -965,14 +967,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const fittingOutReportSection = document.getElementById('fittingOutReportSection');
     const shipPendingSection = document.getElementById('shipPendingSection');
     const permissionsSection = document.getElementById('permissionsSection');
-    const navTrash = document.getElementById('navTrash');
     const trashSection = document.getElementById('trashSection');
+    const settingsSection = document.getElementById('settingsSection');
+    const navTrash = document.getElementById('navTrash');
 
     const sections = [dataSection, reportsSection, dateWiseSection, latePisSection, totalOrderSection, fittingWiseSection, fittingOutReportSection, shipPendingSection, permissionsSection, settingsSection, trashSection];
     const navs = [navData, navReports, navDateWise, navLatePis, navTotalOrder, navFittingWise, navFittingOutReport, navShipPending, navPermissions, navSettings, navTrash];
 
     // Global Permissions State
-    let userPermissions = {};
+    let userPermissions = JSON.parse(localStorage.getItem('pis_cached_permissions') || '{}');
     const ALL_USERS = [
         { id: 'vishal', name: 'Vishal' }, { id: 'piyush', name: 'Piyush' },
         { id: 'amish', name: 'Amish' }, { id: 'arshit', name: 'Arshit' },
@@ -1990,6 +1993,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'navFittingWise', visible: !!reports.fittingWise },
             { id: 'navFittingOutReport', visible: !!reports.fittingOutReport },
             { id: 'navShipPending', visible: !!reports.shipPending },
+            { id: 'navSettings', visible: true }, 
             { id: 'navTrash', visible: !!reports.trash }
         ];
 
@@ -2098,12 +2102,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Active Tab Safeguard ---
         if (!canSeeData && navData && navData.classList.contains('active')) {
-            const firstVisibleNav = navs.find(n => n && n.style.display !== 'none');
+            // Find first visible report (skip Settings/Trash for default landing)
+            const firstVisibleNav = navs.find(n => n && n.style.display !== 'none' && n.id !== 'navSettings' && n.id !== 'navTrash' && n.id !== 'navPermissions');
+            
             if (firstVisibleNav) {
                 const navIndex = navs.indexOf(firstVisibleNav);
                 if (navIndex !== -1 && sections[navIndex]) {
                     showSection(sections[navIndex], firstVisibleNav);
                 }
+            } else if (navSettings && navSettings.style.display !== 'none') {
+                // If only settings is visible
+                showSection(settingsSection, navSettings);
             } else {
                 dataSection.style.display = 'none';
                 document.getElementById('pageTitle').textContent = 'Access Denied';
