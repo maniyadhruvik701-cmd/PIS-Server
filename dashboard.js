@@ -450,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fittingName: '',
             finalDate: '', // Deadline
             receiveDate: '',
-            fittingReceiveDate: '',
             shipDate: '',
             pcs: 1,
             updatedBy: localStorage.getItem('activeUserName') || '',
@@ -575,7 +574,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </td>
             <td><input type="date" data-field="finalDate" value="${data.finalDate || ''}"></td>
             <td><input type="date" data-field="receiveDate" value="${data.receiveDate || ''}"></td>
-            <td><input type="date" data-field="fittingReceiveDate" value="${data.fittingReceiveDate || ''}"></td>
             <td><input type="date" data-field="shipDate" value="${data.shipDate || ''}"></td>
             <td style="font-size: 0.8rem; color: rgba(255,255,255,0.6); vertical-align: middle;" class="row-user-name">${data.updatedBy || ''}</td>
             <td style="text-align: center; white-space: nowrap;">
@@ -589,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputs = row.querySelectorAll('input, select');
         inputs.forEach(input => {
             const field = input.getAttribute('data-field');
-            const isDateField = ['date', 'orderDate', 'confirmationDate', 'finalDate', 'receiveDate', 'fittingReceiveDate', 'shipDate'].includes(field);
+            const isDateField = ['date', 'orderDate', 'confirmationDate', 'finalDate', 'receiveDate', 'shipDate'].includes(field);
 
             // Special handling for date fields for dd-mm-yyyy display
             if (isDateField) {
@@ -687,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         blouseSize: 'Blouse Size', customize: 'Customize', kotiSize: 'Koti Size',
                         kurtaSize: 'Kurta Size', platform: 'Platform', pcs: 'Pieces',
                         fittingName: 'Fitting Name', finalDate: 'Final Date', receiveDate: 'Fitting Receive Date',
-                        fittingReceiveDate: 'Fitting In Date', shipDate: 'Ship Date'
+                        shipDate: 'Ship Date'
                     };
                     const fieldName = fieldLabels[targetField] || targetField;
                     
@@ -1314,33 +1312,25 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // --- Improved Date Filtering Logic ---
-            // Include if EITHER Order Date is in range OR Final Date is in range
+            // --- Date Filtering by Order Date ---
             const oDate = row.orderDate || '';
-            const fDate = row.finalDate || '';
-            
-            const isOrderInRange = oDate >= startDate && oDate <= endDate;
-            const isFinalInRange = fDate >= startDate && fDate <= endDate;
-
-            if (isOrderInRange || isFinalInRange) {
+            if (oDate >= startDate && oDate <= endDate) {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // --- Simplified Pending Logic ---
+                // --- Pending Logic ---
+                // Condition 1: Final Date exists AND Fitting Receive Date is empty
+                // Condition 2: Confirmation Date exists AND Ship Date is empty AND Receive Date is empty
                 const hasConf = row.confirmationDate && row.confirmationDate.trim() !== '';
                 const hasFinal = row.finalDate && row.finalDate.trim() !== '';
-                const noFit = !row.receiveDate || row.receiveDate.trim() === '';
+                const noFittingReceive = !row.receiveDate || row.receiveDate.trim() === '';
                 const noShip = !row.shipDate || row.shipDate.trim() === '';
 
-                // Pending if:
-                // (Confirmed AND not Shipped) OR (Has Deadline AND not Received AND not Shipped)
                 let isPending = false;
-                if (noShip) {
-                    if (hasConf) {
-                        isPending = true;
-                    } else if (hasFinal && noFit) {
-                        isPending = true;
-                    }
+                if (hasFinal && noFittingReceive) {
+                    isPending = true;
+                } else if (hasConf && noShip && noFittingReceive) {
+                    isPending = true;
                 }
 
                 if (isPending) {
@@ -1441,30 +1431,25 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // --- Improved Date Filtering Logic ---
-            const oDate = row.orderDate || '';
+            // --- Date Filtering by Final Date ---
             const fDate = row.finalDate || '';
-            
-            const isOrderInRange = oDate >= startDate && oDate <= endDate;
-            const isFinalInRange = fDate >= startDate && fDate <= endDate;
-
-            if (isOrderInRange || isFinalInRange) {
+            if (fDate >= startDate && fDate <= endDate) {
                 // Filter by Fitting Name if selected
                 if (selectedFitting && row.fittingName !== selectedFitting) return;
 
-                // --- Simplified Pending Logic ---
+                // --- Pending Logic ---
+                // Condition 1: Final Date exists AND Fitting Receive Date is empty
+                // Condition 2: Confirmation Date exists AND Ship Date is empty AND Receive Date is empty
                 const hasConf = row.confirmationDate && row.confirmationDate.trim() !== '';
                 const hasFinal = row.finalDate && row.finalDate.trim() !== '';
-                const noFit = !row.receiveDate || row.receiveDate.trim() === '';
+                const noFittingReceive = !row.receiveDate || row.receiveDate.trim() === '';
                 const noShip = !row.shipDate || row.shipDate.trim() === '';
 
                 let isPending = false;
-                if (noShip) {
-                    if (hasConf) {
-                        isPending = true;
-                    } else if (hasFinal && noFit) {
-                        isPending = true;
-                    }
+                if (hasFinal && noFittingReceive) {
+                    isPending = true;
+                } else if (hasConf && noShip && noFittingReceive) {
+                    isPending = true;
                 }
 
                 if (isPending) {
@@ -1481,9 +1466,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     let itemsInRow = parseInt(row.pcs) || 1;
 
                     if (itemsInRow > 0) {
-                        // Group by Order Date + OrderNo + Design + Platform
+                        // Group by Final Date + OrderNo + Design + Platform
                         const existingEntry = reportData.find(item =>
-                            item.date === row.orderDate &&
+                            item.date === row.finalDate &&
                             item.design === design &&
                             item.platform === platform &&
                             item.orderNo === orderNo &&
@@ -1497,7 +1482,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             existingEntry.count += itemsInRow;
                         } else {
                             reportData.push({
-                                date: row.orderDate,
+                                date: row.finalDate,
                                 orderNo,
                                 design,
                                 platform,
@@ -1689,9 +1674,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let grandTotal = 0;
 
         tableData.forEach(row => {
-            // Filter by Fitting In Date (fittingReceiveDate)
-            if (!row.fittingReceiveDate) return;
-            const filterDate = row.fittingReceiveDate;
+            // Filter by Fitting Receive Date (receiveDate)
+            if (!row.receiveDate) return;
+            const filterDate = row.receiveDate;
 
             if (filterDate >= start && filterDate <= end) {
                 const fittingName = row.fittingName || "Unknown Fitting";
