@@ -83,6 +83,12 @@
                         <span>Settings</span>
                     </a>
                 </li>
+                <li id="navTrash">
+                    <a href="#">
+                        <i class="fas fa-trash-restore"></i>
+                        <span>Trash / Recycle Bin</span>
+                    </a>
+                </li>
             </ul>
             <div class="logout">
                 <a href="#" id="logoutBtn">
@@ -147,7 +153,6 @@
                                 <th>Fitting Name</th>
                                 <th>Final Date</th>
                                 <th>Fitting Receive Date</th>
-                                <th>Fitting In Date</th>
                                 <th>Ship Date</th>
                                 <th>User</th>
                                 <th>Action</th>
@@ -181,7 +186,9 @@
             <div class="reports-container" id="reportsSection" style="display: none;">
                 <h2 style="margin-bottom: 5px;">Total Pending</h2>
                 <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
-                    This report shows all orders with a Confirmation Date, filtered by <strong>Order Date</strong> range.
+                    This report shows pending orders based on their <strong>Order Date</strong>.<br>
+                    <span style="color: #10b981;">Condition 1:</span> Final Date is filled + Receive Date is empty. <br>
+                    <span style="color: #10b981;">Condition 2:</span> Confirmation Date is filled + Ship Date is empty + Receive Date is empty.
                 </p>
                 <div class="report-controls">
                     <div class="date-group" title="Report based on Order Date">
@@ -237,15 +244,17 @@
             <div class="reports-container" id="dateWiseSection" style="display: none;">
                 <h2 style="margin-bottom: 5px;">Date Wise Pending</h2>
                 <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
-                    This report groups pending orders by their <strong>Order Date</strong> and shows items with NO Fitting Receive Date.
+                    This report groups pending orders by their <strong>Final Date</strong>.<br>
+                    <span style="color: #10b981;">Condition 1:</span> Final Date is filled + Receive Date is empty. <br>
+                    <span style="color: #10b981;">Condition 2:</span> Confirmation Date is filled + Ship Date is empty + Receive Date is empty.
                 </p>
                 <div class="report-controls">
-                    <div class="date-group" title="Report based on Order Date">
-                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
+                    <div class="date-group" title="Report based on Final Date">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="dateWiseStartDate">
                     </div>
                     <div class="date-group">
-                        <label>End Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
+                        <label>End Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="dateWiseEndDate">
                     </div>
                     <div class="date-group">
@@ -294,15 +303,15 @@
             <div class="reports-container" id="latePisSection" style="display: none;">
                 <h2 style="margin-bottom: 5px;">Late PIS Report</h2>
                 <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
-                    This report analyzes order performance based on **Ship Date**. It calculates delays by comparing actual shipping vs deadlines.
+                    This report analyzes order performance based on <strong>Final Date</strong>. It calculates delays by comparing actual shipping vs deadlines.
                 </p>
                 <div class="report-controls">
-                    <div class="date-group" title="Report based on Ship Date">
-                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Ship Date)</span>:</label>
+                    <div class="date-group" title="Report based on Final Date">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="lateStartDate">
                     </div>
                     <div class="date-group">
-                        <label>End Date:</label>
+                        <label>End Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
                         <input type="date" id="lateEndDate">
                     </div>
                     <button id="generateLateReportBtn" class="btn-primary"><i class="fas fa-search"></i> Generate
@@ -366,15 +375,15 @@
             <div class="reports-container" id="totalOrderSection" style="display: none;">
                 <h2 style="margin-bottom: 5px;">Total Order</h2>
                 <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.85rem; margin-bottom: 20px;">
-                    This report calculates the total quantity of orders based on their **Final Date (Deadline)**, grouped by Platform and Design No.
+                    This report calculates the total quantity of orders based on their <strong>Order Date</strong>, grouped by Platform and Design No.
                 </p>
                 <div class="report-controls">
-                    <div class="date-group" title="Report based on Final Date (Deadline)">
-                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
+                    <div class="date-group" title="Report based on Order Date">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
                         <input type="date" id="totalOrderStartDate">
                     </div>
                     <div class="date-group">
-                        <label>End Date:</label>
+                        <label>End Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
                         <input type="date" id="totalOrderEndDate">
                     </div>
                     <button id="generateTotalOrderBtn" class="btn-primary"><i class="fas fa-search"></i> Generate
@@ -405,11 +414,11 @@
                 <h2 style="margin-bottom: 20px;">Fitting Wise Report</h2>
                 <div class="report-controls">
                     <div class="date-group">
-                        <label>Start Date (Fitting In):</label>
+                        <label>Start Date (Fitting Receive Date):</label>
                         <input type="date" id="fittingWiseStartDate">
                     </div>
                     <div class="date-group">
-                        <label>End Date (Fitting In):</label>
+                        <label>End Date (Fitting Receive Date):</label>
                         <input type="date" id="fittingWiseEndDate">
                     </div>
                     <div class="date-group">
@@ -433,7 +442,7 @@
                                 <th>Design No</th>
                                 <th>Platform</th>
                                 <th>Fitting Name</th>
-                                <th>Fitting In Date</th>
+                                <th>Fitting Receive Date</th>
                                 <th>Total Pieces</th>
                             </tr>
                         </thead>
@@ -465,7 +474,7 @@
                         <input type="date" id="fittingOutStartDate">
                     </div>
                     <div class="date-group">
-                        <label>End Date:</label>
+                        <label>End Date <span style="font-size: 0.75rem; color: #10b981;">(Fitting Out Date)</span>:</label>
                         <input type="date" id="fittingOutEndDate">
                     </div>
                     <button id="generateFittingOutBtn" class="btn-primary"><i class="fas fa-search"></i> Generate Report</button>
@@ -492,18 +501,18 @@
                     <div class="left-controls">
                         <h2>Ship Pending Report</h2>
                         <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">
-                            Orders where **Ship Date is empty** and the **Final Date (Deadline)** is within the specified range.
+                            Orders where Ship Date is empty and the <strong>Order Date</strong> is within the specified range.
                         </p>
                     </div>
                 </div>
 
                 <div class="report-controls">
-                    <div class="date-group" title="Report based on Final Date (Deadline)">
-                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Final Date)</span>:</label>
+                    <div class="date-group" title="Report based on Order Date">
+                        <label>Start Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
                         <input type="date" id="shipPendingStartDate">
                     </div>
                     <div class="date-group">
-                        <label>End Date:</label>
+                        <label>End Date <span style="font-size: 0.75rem; color: #10b981;">(Order Date)</span>:</label>
                         <input type="date" id="shipPendingEndDate">
                     </div>
                     <button id="generateShipPendingBtn" class="btn-primary"><i class="fas fa-search"></i> Generate Report</button>
@@ -582,6 +591,36 @@
                         <span id="firebaseStatus"
                             style="font-size: 1.1em; font-weight: bold; margin-top: 5px;">Connecting...</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Trash Section (Hidden by default) -->
+            <div class="reports-container" id="trashSection" style="display: none;">
+                <div class="table-header-controls">
+                    <div class="left-controls">
+                        <h2>Trash / Recycle Bin</h2>
+                        <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">Items you deleted are stored here for recovery.</p>
+                    </div>
+                    <div class="right-controls">
+                        <button id="emptyTrashBtn" class="btn-danger"><i class="fas fa-fire"></i> Empty Trash</button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper" style="margin-top: 20px;">
+                    <table id="trashTable">
+                        <thead>
+                            <tr>
+                                <th>Order No</th>
+                                <th>Design No</th>
+                                <th>Platform</th>
+                                <th>Deleted By</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trashTbody">
+                            <!-- Deleted items will appear here -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
