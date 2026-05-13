@@ -2496,4 +2496,96 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('historyModal').style.display = 'none';
         });
     }
+
+    // --- Keyboard Navigation for Data Table ---
+    const dataTable = document.getElementById('dataTable');
+    if (dataTable) {
+        dataTable.addEventListener('keydown', (e) => {
+            const target = e.target;
+            if (target.tagName !== 'INPUT' && target.tagName !== 'SELECT') return;
+
+            // Don't intercept up/down for select elements so they can still change options
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && target.tagName === 'SELECT') {
+                return;
+            }
+
+            let moveDirection = null;
+
+            if (e.key === 'ArrowUp') {
+                moveDirection = 'up';
+            } else if (e.key === 'ArrowDown') {
+                moveDirection = 'down';
+            } else if (e.key === 'ArrowLeft') {
+                let canMoveLeft = false;
+                if (target.tagName === 'INPUT') {
+                    if (target.type === 'date') {
+                        canMoveLeft = false;
+                    } else if (target.type === 'number') {
+                        canMoveLeft = true;
+                    } else {
+                        try {
+                            if (target.selectionStart === 0) canMoveLeft = true;
+                        } catch(err) { canMoveLeft = true; }
+                    }
+                } else {
+                    canMoveLeft = true; // SELECT
+                }
+                if (canMoveLeft) moveDirection = 'left';
+            } else if (e.key === 'ArrowRight') {
+                let canMoveRight = false;
+                if (target.tagName === 'INPUT') {
+                    if (target.type === 'date') {
+                        canMoveRight = false;
+                    } else if (target.type === 'number') {
+                        canMoveRight = true;
+                    } else {
+                        try {
+                            if (target.selectionEnd === target.value.length) canMoveRight = true;
+                        } catch(err) { canMoveRight = true; }
+                    }
+                } else {
+                    canMoveRight = true; // SELECT
+                }
+                if (canMoveRight) moveDirection = 'right';
+            }
+
+            if (!moveDirection) return;
+
+            const td = target.closest('td');
+            const tr = target.closest('tr');
+            if (!td || !tr) return;
+
+            const tds = Array.from(tr.children);
+            const colIndex = tds.indexOf(td);
+
+            if (moveDirection === 'up' || moveDirection === 'down') {
+                e.preventDefault();
+                const nextTr = moveDirection === 'up' ? tr.previousElementSibling : tr.nextElementSibling;
+                if (nextTr) {
+                    const nextTd = nextTr.children[colIndex];
+                    if (nextTd) {
+                        const nextInput = nextTd.querySelector('input, select');
+                        if (nextInput) {
+                            nextInput.focus();
+                        }
+                    }
+                }
+            } else if (moveDirection === 'left' || moveDirection === 'right') {
+                const inputsInRow = Array.from(tr.querySelectorAll('input, select'));
+                const currentIndex = inputsInRow.indexOf(target);
+                let nextInput = null;
+
+                if (moveDirection === 'left' && currentIndex > 0) {
+                    nextInput = inputsInRow[currentIndex - 1];
+                } else if (moveDirection === 'right' && currentIndex < inputsInRow.length - 1) {
+                    nextInput = inputsInRow[currentIndex + 1];
+                }
+
+                if (nextInput) {
+                    e.preventDefault();
+                    nextInput.focus();
+                }
+            }
+        });
+    }
 });
