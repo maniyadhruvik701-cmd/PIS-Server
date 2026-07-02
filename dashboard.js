@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ROWS_PER_PAGE = 20;
     let currentPage = 1;
     let tableData = []; // Array of Objects to store data
-    let trashData = []; // Array to store deleted items
+
     let warnedDuplicates = new Set(); // Track warned duplicate numbers globally in session
     let platformOptions = [];
     let fittingOptions = [];
@@ -235,7 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Reference to Global Data
                     dbRef = database.ref('pis_global_data');
-                    const trashRef = database.ref('pis_trash_data');
 
                     updateFirebaseStatus('connected');
                     isFirebaseConnected = true;
@@ -282,26 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
 
-                    // --- Trash Data Listener ---
-                    trashRef.on('value', (snapshot) => {
-                        const data = snapshot.val();
-                        if (data && Array.isArray(data)) {
-                            if (JSON.stringify(data) !== JSON.stringify(trashData)) {
-                                trashData = data;
-                                localStorage.setItem('pis_trash_data', JSON.stringify(trashData));
-                                if (trashSection.style.display !== 'none') {
-                                    renderTrashTable();
-                                }
-                                console.log("☁️ Trash Synced from Cloud");
-                            }
-                        } else if (data === null) {
-                            trashData = [];
-                            localStorage.setItem('pis_trash_data', JSON.stringify([]));
-                            if (trashSection.style.display !== 'none') {
-                                renderTrashTable();
-                            }
-                        }
-                    });
+
 
                     // --- Platforms Listener ---
                     database.ref('pis_platforms').on('value', (snapshot) => {
@@ -416,25 +396,21 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPage = 1;
         }
 
-        // Load Trash
-        const storedTrash = localStorage.getItem('pis_trash_data');
-        if (storedTrash) {
-            trashData = JSON.parse(storedTrash);
-        }
-
         renderTable();
     }
 
-    function saveToLocalStorage() {
+    function saveToLocalStorage(modifiedIndex = -1) {
         // 1. Save Local
         localStorage.setItem(DATA_KEY, JSON.stringify(tableData));
         localStorage.setItem('pis_current_page', currentPage);
-        localStorage.setItem('pis_trash_data', JSON.stringify(trashData));
 
         // 2. Sync to Cloud (if connected)
         if (isFirebaseConnected && dbRef) {
-            dbRef.set(tableData).catch(err => console.error("Cloud Save Error:", err));
-            firebase.database().ref('pis_trash_data').set(trashData).catch(err => console.error("Cloud Trash Save Error:", err));
+            if (modifiedIndex > -1 && tableData[modifiedIndex]) {
+                dbRef.child(modifiedIndex).update(tableData[modifiedIndex]).catch(err => console.error("Cloud Save Error:", err));
+            } else {
+                dbRef.set(tableData).catch(err => console.error("Cloud Save Error:", err));
+            }
         }
     }
 
@@ -471,61 +447,65 @@ document.addEventListener('DOMContentLoaded', () => {
             document.activeElement.blur();
         }
 
-        for (let i = 0; i < count; i++) {
-            tableData.push(addNewEntryObject());
+        currentPage = 1; // Always show the newly added rows at the top
+
+        if (isFirebaseConnected && dbRef) {
+            dbRef.transaction((currentData) => {
+                let data = currentData || [];
+                const newRows = [];
+                for(let i = 0; i < count; i++) {
+                    newRows.push(addNewEntryObject());
+                }
+                return data.concat(newRows);
+            }).catch(err => console.error("Cloud Add Rows Error:", err));
+        } else {
+            for (let i = 0; i < count; i++) {
+                tableData.push(addNewEntryObject());
+            }
+            saveToLocalStorage(-1);
+            renderTable();
         }
-
-        // After adding new rows, since we show newest first, 
-        // they will appear at the top of Page 1.
-        currentPage = 1;
-
-        saveToLocalStorage();
-        renderTable();
     }
 
     function deleteRow(item) {
         const index = tableData.indexOf(item);
         if (index > -1) {
-            // Add to Trash
-            const deletedItem = {
-                ...item,
-                deletedAt: new Date().toISOString(),
-                deletedBy: localStorage.getItem('activeUserName') || 'Unknown'
-            };
-            trashData.unshift(deletedItem); // Latest deleted at top
-            if (trashData.length > 500) trashData.pop(); // Keep last 500 items
-
-            tableData.splice(index, 1);
+            if (isFirebaseConnected && dbRef) {
+                dbRef.transaction((currentData) => {
+                    if (currentData && currentData.length > index) {
+                        currentData.splice(index, 1);
+                    }
+                    return currentData;
+                }).catch(err => console.error("Cloud Delete Row Error:", err));
+            } else {
+                tableData.splice(index, 1);
+                saveToLocalStorage(-1);
+                
+                // Adjust pagination if needed
+                const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
+                if (currentPage > totalPages) {
+                    currentPage = totalPages;
+                }
+                renderTable();
+            }
         }
-        saveToLocalStorage();
-
-        // Adjust pagination if needed
-        const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
-        if (currentPage > totalPages) {
-            currentPage = totalPages;
-        }
-        renderTable();
     }
 
     function clearAll() {
-        if (confirm("Are you sure you want to clear all data? All items will be moved to the Trash.")) {
-            // Move all to Trash
-            const deletedAt = new Date().toISOString();
-            const deletedBy = localStorage.getItem('activeUserName') || 'Unknown';
-            const itemsToTrash = tableData.filter(r => r.orderNo || r.designNo).map(r => ({
-                ...r,
-                deletedAt,
-                deletedBy
-            }));
-
-            trashData = itemsToTrash.concat(trashData).slice(0, 500);
-
-            tableData = [];
-            tableData.push(addNewEntryObject()); // Keep one empty row
-            saveToLocalStorage();
-            currentPage = 1;
-            renderTable();
-            alert("All data moved to Trash.");
+        if (confirm("Are you sure you want to clear all data? This cannot be undone.")) {
+            if (isFirebaseConnected && dbRef) {
+                 tableData = [addNewEntryObject()];
+                 saveToLocalStorage(-1);
+                 currentPage = 1;
+                 renderTable();
+            } else {
+                 tableData = [];
+                 tableData.push(addNewEntryObject());
+                 saveToLocalStorage(-1);
+                 currentPage = 1;
+                 renderTable();
+            }
+            alert("All data cleared.");
         }
     }
 
@@ -703,7 +683,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
 
-                saveToLocalStorage(); // Auto-save on every keystroke/change
+                const index = tableData.indexOf(data);
+                saveToLocalStorage(index); // Auto-save on every keystroke/change, only updating this specific row
             });
 
             // Duplicate entry check on 'blur' event
@@ -904,26 +885,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (confirm(`Are you sure you want to delete entries from Sr No ${startSr} to ${endSr}? Items will be moved to Trash.`)) {
+            if (confirm(`Are you sure you want to delete entries from Sr No ${startSr} to ${endSr}? This cannot be undone.`)) {
                 // Sr No 300 is at index 299
                 const startIdx = startSr - 1;
                 const count = endSr - startIdx;
 
-                const deletedAt = new Date().toISOString();
-                const deletedBy = localStorage.getItem('activeUserName') || 'Unknown';
-                const itemsToTrash = tableData.slice(startIdx, startIdx + count).map(r => ({
-                    ...r,
-                    deletedAt,
-                    deletedBy
-                }));
-
-                trashData = itemsToTrash.concat(trashData).slice(0, 500);
-                tableData.splice(startIdx, count);
-
-                saveToLocalStorage();
-                renderTable();
-                deleteRangeInput.value = '';
-                alert(`Successfully moved ${count} entries to Trash.`);
+                if (isFirebaseConnected && dbRef) {
+                    dbRef.transaction((currentData) => {
+                        if (currentData && currentData.length >= startIdx + count) {
+                            currentData.splice(startIdx, count);
+                        }
+                        return currentData;
+                    }).catch(err => console.error("Cloud Delete Range Error:", err));
+                    deleteRangeInput.value = '';
+                    alert(`Successfully deleted ${count} entries.`);
+                } else {
+                    tableData.splice(startIdx, count);
+                    saveToLocalStorage(-1);
+                    renderTable();
+                    deleteRangeInput.value = '';
+                    alert(`Successfully deleted ${count} entries.`);
+                }
             }
         });
     }
@@ -967,12 +949,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const fittingOutReportSection = document.getElementById('fittingOutReportSection');
     const shipPendingSection = document.getElementById('shipPendingSection');
     const permissionsSection = document.getElementById('permissionsSection');
-    const trashSection = document.getElementById('trashSection');
     const settingsSection = document.getElementById('settingsSection');
-    const navTrash = document.getElementById('navTrash');
 
-    const sections = [dataSection, reportsSection, dateWiseSection, latePisSection, totalOrderSection, fittingWiseSection, fittingOutReportSection, shipPendingSection, permissionsSection, settingsSection, trashSection];
-    const navs = [navData, navReports, navDateWise, navLatePis, navTotalOrder, navFittingWise, navFittingOutReport, navShipPending, navPermissions, navSettings, navTrash];
+    const sections = [dataSection, reportsSection, dateWiseSection, latePisSection, totalOrderSection, fittingWiseSection, fittingOutReportSection, shipPendingSection, permissionsSection, settingsSection];
+    const navs = [navData, navReports, navDateWise, navLatePis, navTotalOrder, navFittingWise, navFittingOutReport, navShipPending, navPermissions, navSettings];
 
     // Global Permissions State
     let userPermissions = JSON.parse(localStorage.getItem('pis_cached_permissions') || '{}');
@@ -1011,10 +991,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navSettings) navSettings.addEventListener('click', () => showSection(settingsSection, navSettings));
     if (navFittingOutReport) navFittingOutReport.addEventListener('click', () => showSection(fittingOutReportSection, navFittingOutReport));
     if (navShipPending) navShipPending.addEventListener('click', () => showSection(shipPendingSection, navShipPending));
-    if (navTrash) navTrash.addEventListener('click', () => {
-        showSection(trashSection, navTrash);
-        renderTrashTable();
-    });
 
     // --- Backup & Restore Logic ---
     const backupDataBtn = document.getElementById('backupDataBtn');
@@ -1111,75 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Trash Table Rendering & Actions ---
-    function renderTrashTable() {
-        const tbody = document.getElementById('trashTbody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
 
-        if (trashData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Trash is empty.</td></tr>';
-            return;
-        }
-
-        trashData.forEach((item, index) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${item.orderNo || '-'}</td>
-                <td>${item.designNo || '-'}</td>
-                <td>${item.platform || '-'}</td>
-                <td><span style="font-size:0.8rem; color:rgba(255,255,255,0.5)">${item.deletedBy || 'Admin'}</span></td>
-                <td>
-                    <button class="btn-primary restore-btn" data-index="${index}" style="padding: 5px 10px; font-size: 0.7rem; background: #10b981;">Restore</button>
-                    <button class="btn-danger permanent-delete-btn" data-index="${index}" style="padding: 5px 10px; font-size: 0.7rem;">Delete Forever</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        // Attach listeners
-        tbody.querySelectorAll('.restore-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const idx = parseInt(e.target.dataset.index);
-                restoreFromTrash(idx);
-            });
-        });
-
-        tbody.querySelectorAll('.permanent-delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const idx = parseInt(e.target.dataset.index);
-                if (confirm("Delete this item forever?")) {
-                    trashData.splice(idx, 1);
-                    saveToLocalStorage();
-                    renderTrashTable();
-                }
-            });
-        });
-    }
-
-    function restoreFromTrash(index) {
-        const item = trashData[index];
-        if (item) {
-            // Remove trash-specific fields
-            const { deletedAt, deletedBy, ...restoredItem } = item;
-            tableData.unshift(restoredItem);
-            trashData.splice(index, 1);
-            saveToLocalStorage();
-            renderTrashTable();
-            alert("Item restored to the main table!");
-        }
-    }
-
-    const emptyTrashBtn = document.getElementById('emptyTrashBtn');
-    if (emptyTrashBtn) {
-        emptyTrashBtn.addEventListener('click', () => {
-            if (confirm("Are you sure you want to empty the trash? This cannot be undone.")) {
-                trashData = [];
-                saveToLocalStorage();
-                renderTrashTable();
-            }
-        });
-    }
 
     // --- Late PIS Report Logic ---
     const generateLateReportBtn = document.getElementById('generateLateReportBtn');
