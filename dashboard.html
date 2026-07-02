@@ -83,12 +83,7 @@
                         <span>Settings</span>
                     </a>
                 </li>
-                <li id="navTrash">
-                    <a href="#">
-                        <i class="fas fa-trash-restore"></i>
-                        <span>Trash / Recycle Bin</span>
-                    </a>
-                </li>
+
             </ul>
             <div class="logout">
                 <a href="#" id="logoutBtn">
@@ -594,35 +589,7 @@
                 </div>
             </div>
 
-            <!-- Trash Section (Hidden by default) -->
-            <div class="reports-container" id="trashSection" style="display: none;">
-                <div class="table-header-controls">
-                    <div class="left-controls">
-                        <h2>Trash / Recycle Bin</h2>
-                        <p style="color: rgba(255, 255, 255, 0.4); font-size: 0.9rem;">Items you deleted are stored here for recovery.</p>
-                    </div>
-                    <div class="right-controls">
-                        <button id="emptyTrashBtn" class="btn-danger"><i class="fas fa-fire"></i> Empty Trash</button>
-                    </div>
-                </div>
 
-                <div class="table-wrapper" style="margin-top: 20px;">
-                    <table id="trashTable">
-                        <thead>
-                            <tr>
-                                <th>Order No</th>
-                                <th>Design No</th>
-                                <th>Platform</th>
-                                <th>Deleted By</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="trashTbody">
-                            <!-- Deleted items will appear here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
             <!-- Platform Management Modal -->
             <div id="platformModal" class="modal">
