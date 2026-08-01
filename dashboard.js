@@ -118,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     let tableData = []; // Array of Objects to store data
 
-    let warnedDuplicates = new Set(); // Track warned duplicate numbers globally in session
     let platformOptions = [];
     let fittingOptions = [];
     let fittingDetailOptions = [];
@@ -686,31 +685,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const index = tableData.indexOf(data);
                 saveToLocalStorage(index); // Auto-save on every keystroke/change, only updating this specific row
             });
-
-            // Duplicate entry check on 'blur' event
-            if (field === 'orderNo' || field === 'designNo') {
-                input.addEventListener('blur', function () {
-                    const val = (this.value || '').toString().trim();
-
-                    if (val) {
-                        const exists = tableData.some(r =>
-                            r !== data &&
-                            (field === 'orderNo' ? (r.orderNo || '') : (r.designNo || '')).toString().trim().toLowerCase() === val.toLowerCase()
-                        );
-
-                        if (exists) {
-                            // Only alert if we haven't warned for this specific value in this session yet
-                            const warnKey = `${field}_${val.toLowerCase()}`;
-                            if (!warnedDuplicates.has(warnKey)) {
-                                setTimeout(() => {
-                                    alert(`Warning: ${field === 'orderNo' ? 'Order' : 'Design'} No "${val}" already exists in the table!`);
-                                    warnedDuplicates.add(warnKey); // Mark this value as warned globally
-                                }, 100);
-                            }
-                        }
-                    }
-                });
-            }
         });
 
         // Event Listener for Delete
