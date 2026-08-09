@@ -669,7 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         blouseSize: 'Blouse Size', customize: 'Customize', kotiSize: 'Koti Size',
                         kurtaSize: 'Kurta Size', platform: 'Platform', pcs: 'Pieces',
                         fittingName: 'Fitting Name', finalDate: 'Final Date', receiveDate: 'Fitting Receive Date',
-                        shipDate: 'Ship Date'
+                        shipDate: 'Dispatch Date'
                     };
                     const fieldName = fieldLabels[targetField] || targetField;
                     
@@ -1205,7 +1205,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // --- Pending Logic ---
                 // Condition 1: Final Date exists AND Fitting Receive Date is empty
-                // Condition 2: Confirmation Date exists AND Ship Date is empty AND Receive Date is empty
+                // Condition 2: Confirmation Date exists AND Dispatch Date is empty AND Receive Date is empty
                 const hasConf = row.confirmationDate && row.confirmationDate.trim() !== '';
                 const hasFinal = row.finalDate && row.finalDate.trim() !== '';
                 const noFittingReceive = !row.receiveDate || row.receiveDate.trim() === '';
@@ -1324,7 +1324,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // --- Pending Logic ---
                 // Condition 1: Final Date exists AND Fitting Receive Date is empty
-                // Condition 2: Confirmation Date exists AND Ship Date is empty AND Receive Date is empty
+                // Condition 2: Confirmation Date exists AND Dispatch Date is empty AND Receive Date is empty
                 const hasConf = row.confirmationDate && row.confirmationDate.trim() !== '';
                 const hasFinal = row.finalDate && row.finalDate.trim() !== '';
                 const noFittingReceive = !row.receiveDate || row.receiveDate.trim() === '';
@@ -1703,7 +1703,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Ship Pending Report Logic ---
+    // --- Dispatch Pending Report Logic ---
     const generateShipPendingBtn = document.getElementById('generateShipPendingBtn');
     const shipPendingStartDate = document.getElementById('shipPendingStartDate');
     const shipPendingEndDate = document.getElementById('shipPendingEndDate');
@@ -1757,7 +1757,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Ship Pending PDF Export ---
+    // --- Dispatch Pending PDF Export ---
     const exportShipPendingPdfBtn = document.getElementById('exportShipPendingPdfBtn');
     if (exportShipPendingPdfBtn) {
         exportShipPendingPdfBtn.addEventListener('click', () => {
@@ -1765,7 +1765,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const doc = new jsPDF({ orientation: 'portrait' });
             const start = shipPendingStartDate.value;
             const end = shipPendingEndDate.value;
-            doc.text(`Ship Pending Report (${start} to ${end})`, 14, 15);
+            doc.text(`Dispatch Pending Report (${start} to ${end})`, 14, 15);
             doc.autoTable({
                 html: '#shipPendingTable',
                 startY: 20,
@@ -1774,7 +1774,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 footStyles: { fillColor: [20, 20, 20], textColor: [255, 255, 255] },
                 styles: { fontSize: 10, cellPadding: 3 },
             });
-            doc.save(`Ship_Pending_${start}_${end}.pdf`);
+            doc.save(`Dispatch_Pending_${start}_${end}.pdf`);
         });
     }
 
@@ -1919,7 +1919,7 @@ document.addEventListener('DOMContentLoaded', () => {
             col_13: 14, // Final Date
             col_14: 15, // Fitting Received
             col_15: 16, // Fitting In/Return
-            col_16: 17, // Ship Date
+            col_16: 17, // Dispatch Date
             col_17: 18  // User Name Log
         };
         const ACTION_COL_INDEX = 19;
@@ -2025,7 +2025,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'col_13', label: 'Final Date', color: '#f59e0b' },
             { key: 'col_14', label: 'Fitting Received', color: '#f59e0b' },
             { key: 'col_15', label: 'Fitting In/Reture', color: '#f59e0b' },
-            { key: 'col_16', label: 'Ship Date', color: '#f59e0b' },
+            { key: 'col_16', label: 'Dispatch Date', color: '#f59e0b' },
             { key: 'col_17', label: 'User Name Log', color: '#f59e0b' }
         ];
 
@@ -2036,7 +2036,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'totalOrder', label: 'Total Order', color: '#fbbf24' },
             { key: 'fittingWise', label: 'Fitting Wise', color: '#34d399' },
             { key: 'fittingOutReport', label: 'Fitting Out Report', color: '#2dd4bf' },
-            { key: 'shipPending', label: 'Ship Pending', color: '#f472b6' },
+            { key: 'shipPending', label: 'Dispatch Pending', color: '#f472b6' },
             { key: 'trash', label: 'Trash / Recycle Bin', color: '#6b7280' }
         ];
 
