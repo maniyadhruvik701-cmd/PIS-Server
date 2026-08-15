@@ -422,7 +422,6 @@ document.addEventListener('DOMContentLoaded', () => {
             orderNo: '',
             designNo: '',
             fittingDetail: '',
-            blouseSize: '',
             customize: '',
             kotiSize: '',
             kurtaSize: '',
@@ -539,7 +538,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${fittingDetailOptions.map(opt => `<option value="${opt}" ${data.fittingDetail === opt ? 'selected' : ''}>${opt}</option>`).join('')}
                 </select>
             </td>
-            <td><input type="text" data-field="blouseSize" placeholder="Size" value="${data.blouseSize || ''}"></td>
             <td><input type="text" data-field="customize" placeholder="Customize" value="${data.customize || ''}"></td>
             <td><input type="text" data-field="kotiSize" placeholder="Koti Size" value="${data.kotiSize || ''}"></td>
             <td><input type="text" data-field="kurtaSize" placeholder="Kurta Size" value="${data.kurtaSize || ''}"></td>
@@ -649,6 +647,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                if (targetField === 'orderNo' && newValue && newValue.trim() !== '') {
+                    const enteredOrderNo = newValue.trim();
+                    const isDuplicate = tableData.some(r => r !== data && r.orderNo && r.orderNo.toString().trim().toLowerCase() === enteredOrderNo.toLowerCase());
+
+                    if (isDuplicate) {
+                        const confirmDuplicate = confirm(`Order No "${enteredOrderNo}" already exists!\n\nDo you still want to enter this duplicate Order No?\n- Click 'OK' (Yes) to proceed\n- Click 'Cancel' (No) to cancel entry`);
+                        if (!confirmDuplicate) {
+                            e.target.value = oldValue;
+                            data[targetField] = oldValue;
+                            if (e.target.adjustWidth) e.target.adjustWidth();
+                            return;
+                        }
+                    }
+                }
+
                 data[targetField] = newValue; // Bind directly to the object reference
 
                 // Track who updated this row
@@ -666,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const fieldLabels = {
                         orderDate: 'Order Date', confirmationDate: 'Confirmation Date', date: 'Fitting Out Date',
                         orderNo: 'Order No', designNo: 'Design No', fittingDetail: 'Fitting Detail',
-                        blouseSize: 'Blouse Size', customize: 'Customize', kotiSize: 'Koti Size',
+                        customize: 'Customize', kotiSize: 'Koti Size',
                         kurtaSize: 'Kurta Size', platform: 'Platform', pcs: 'Pieces',
                         fittingName: 'Fitting Name', finalDate: 'Final Date', receiveDate: 'Fitting Receive Date',
                         shipDate: 'Dispatch Date'
@@ -764,7 +777,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     (row.designNo && row.designNo.toString().toLowerCase().includes(query)) ||
                     (row.platform && row.platform.toLowerCase().includes(query)) ||
                     (row.fittingName && row.fittingName.toLowerCase().includes(query)) ||
-                    (row.blouseSize && row.blouseSize.toString().toLowerCase().includes(query)) ||
                     (row.customize && row.customize.toLowerCase().includes(query)) ||
                     (row.pcs && row.pcs.toString().includes(query)) ||
                     (row.date && row.date.includes(query))
@@ -891,6 +903,116 @@ document.addEventListener('DOMContentLoaded', () => {
     jumpPageInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') jumpToPage();
     });
+
+    // --- Keyboard Grid Navigation (Arrow Keys & Enter) ---
+    function getVisibleRowInputs(tr) {
+        if (!tr) return [];
+        return Array.from(tr.querySelectorAll('input:not([type="hidden"]), select')).filter(el => {
+            const td = el.closest('td');
+            if (td && getComputedStyle(td).display === 'none') return false;
+            return getComputedStyle(el).display !== 'none';
+        });
+    }
+
+    function navigateTableGrid(currentEl, direction) {
+        const currentTr = currentEl.closest('tr');
+        if (!currentTr) return;
+
+        const rowInputs = getVisibleRowInputs(currentTr);
+        const colIdx = rowInputs.indexOf(currentEl);
+        if (colIdx === -1) return;
+
+        const tbody = currentTr.closest('tbody');
+        if (!tbody) return;
+
+        const allTrs = Array.from(tbody.querySelectorAll('tr')).filter(tr => getComputedStyle(tr).display !== 'none');
+        const trIdx = allTrs.indexOf(currentTr);
+
+        let targetEl = null;
+
+        if (direction === 'up') {
+            if (trIdx > 0) {
+                const prevInputs = getVisibleRowInputs(allTrs[trIdx - 1]);
+                targetEl = prevInputs[colIdx] || prevInputs[prevInputs.length - 1];
+            }
+        } else if (direction === 'down') {
+            if (trIdx < allTrs.length - 1) {
+                const nextInputs = getVisibleRowInputs(allTrs[trIdx + 1]);
+                targetEl = nextInputs[colIdx] || nextInputs[nextInputs.length - 1];
+            }
+        } else if (direction === 'left') {
+            if (colIdx > 0) {
+                targetEl = rowInputs[colIdx - 1];
+            } else if (trIdx > 0) {
+                const prevInputs = getVisibleRowInputs(allTrs[trIdx - 1]);
+                targetEl = prevInputs[prevInputs.length - 1];
+            }
+        } else if (direction === 'right') {
+            if (colIdx < rowInputs.length - 1) {
+                targetEl = rowInputs[colIdx + 1];
+            } else if (trIdx < allTrs.length - 1) {
+                const nextInputs = getVisibleRowInputs(allTrs[trIdx + 1]);
+                targetEl = nextInputs[0];
+            }
+        }
+
+        if (targetEl) {
+            targetEl.focus();
+            if (targetEl.tagName === 'INPUT' && targetEl.type !== 'date' && typeof targetEl.select === 'function') {
+                setTimeout(() => {
+                    try { targetEl.select(); } catch (e) {}
+                }, 10);
+            }
+        }
+    }
+
+    const dataTableEl = document.getElementById('dataTable');
+    if (dataTableEl) {
+        dataTableEl.addEventListener('keydown', (e) => {
+            const target = e.target;
+            if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'SELECT')) return;
+
+            const key = e.key;
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) return;
+
+            const field = target.getAttribute('data-field');
+            const isDateField = ['date', 'orderDate', 'confirmationDate', 'finalDate', 'receiveDate', 'shipDate'].includes(field);
+
+            if (key === 'ArrowUp') {
+                e.preventDefault();
+                navigateTableGrid(target, 'up');
+            } else if (key === 'ArrowDown') {
+                e.preventDefault();
+                navigateTableGrid(target, 'down');
+            } else if (key === 'Enter') {
+                e.preventDefault();
+                target.blur(); // Trigger change & auto-save
+                navigateTableGrid(target, 'down');
+            } else if (key === 'ArrowLeft') {
+                if (isDateField || target.tagName === 'SELECT') {
+                    e.preventDefault();
+                    navigateTableGrid(target, 'left');
+                } else if (target.tagName === 'INPUT') {
+                    const isAtStart = (target.selectionStart === 0 && target.selectionEnd === 0);
+                    if (isAtStart) {
+                        e.preventDefault();
+                        navigateTableGrid(target, 'left');
+                    }
+                }
+            } else if (key === 'ArrowRight') {
+                if (isDateField || target.tagName === 'SELECT') {
+                    e.preventDefault();
+                    navigateTableGrid(target, 'right');
+                } else if (target.tagName === 'INPUT') {
+                    const isAtEnd = (target.selectionStart === target.value.length);
+                    if (isAtEnd) {
+                        e.preventDefault();
+                        navigateTableGrid(target, 'right');
+                    }
+                }
+            }
+        });
+    }
 
     // --- Search Listener ---
     const searchInput = document.getElementById('searchInput');
@@ -1223,13 +1345,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
                     const fittingName = row.fittingName || "-";
-                    const blouseSize = row.blouseSize || "-";
                     const kotiSize = row.kotiSize || "-";
                     const kurtaSize = row.kurtaSize || "-";
                     const confirmationDate = row.confirmationDate || "-";
                     const fittingDetail = row.fittingDetail || "-";
 
-                    const key = `${orderNo}| ${design}| ${platform}| ${fittingName}| ${blouseSize}| ${kotiSize}| ${kurtaSize}| ${fittingDetail}`;
+                    const key = `${orderNo}| ${design}| ${platform}| ${fittingName}| ${kotiSize}| ${kurtaSize}| ${fittingDetail}`;
 
                     if (!reportMap[key]) {
                         reportMap[key] = {
@@ -1238,7 +1359,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             design,
                             platform,
                             fittingName,
-                            blouseSize,
                             kotiSize,
                             kurtaSize,
                             fittingDetail,
@@ -1274,7 +1394,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${data.design}</td>
                     <td>${data.platform}</td>
                     <td>${data.fittingName}</td>
-                    <td>${data.blouseSize}</td>
                     <td>${data.kotiSize}</td>
                     <td>${data.kurtaSize}</td>
                     <td>${data.fittingDetail}</td>
@@ -1342,7 +1461,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const platform = row.platform || "-";
                     const orderNo = row.orderNo || "-";
                     const fittingName = row.fittingName || "-";
-                    const blouseSize = row.blouseSize || "-";
                     const kotiSize = row.kotiSize || "-";
                     const kurtaSize = row.kurtaSize || "-";
                     const fittingDetail = row.fittingDetail || "-";
@@ -1358,7 +1476,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             item.platform === platform &&
                             item.orderNo === orderNo &&
                             item.fittingName === fittingName &&
-                            item.blouseSize === blouseSize &&
                             item.kotiSize === kotiSize &&
                             item.kurtaSize === kurtaSize &&
                             item.fittingDetail === fittingDetail
@@ -1372,7 +1489,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 design,
                                 platform,
                                 fittingName,
-                                blouseSize,
                                 kotiSize,
                                 kurtaSize,
                                 fittingDetail,
@@ -1414,7 +1530,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${item.design}</td>
                 <td>${item.platform}</td>
                 <td>${item.fittingName}</td>
-                <td>${item.blouseSize}</td>
                 <td>${item.kotiSize}</td>
                 <td>${item.kurtaSize}</td>
                 <td>${item.fittingDetail}</td>
@@ -1899,9 +2014,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Table Column Visibility ---
         // Map permission keys to actual DOM column indices (0-based)
         // DOM order: 0=#, 1=OrderDate, 2=ConfirmationDate, 3=FittingOutDate, 4=OrderNo,
-        //            5=DesignNo, 6=FittingDetail, 7=BlouseSize, 8=Customize, 9=KotiSize,
-        //            10=KurtaSize, 11=Platform, 12=Pcs, 13=FittingName, 14=FinalDate,
-        //            15=FittingReceived, 16=FittingIn, 17=ShipDate, 18=UserName, 19=Action
+        //            5=DesignNo, 6=FittingDetail, 7=Customize, 8=KotiSize, 9=KurtaSize,
+        //            10=Platform, 11=Pcs, 12=FittingName, 13=FinalDate, 14=FittingReceived,
+        //            15=FittingIn, 16=ShipDate, 17=UserName, 18=Action
         const colKeyToDomIndex = {
             col_1: 1,   // Order Date
             col_18: 2,  // Confirmation Date (new)
@@ -1909,20 +2024,19 @@ document.addEventListener('DOMContentLoaded', () => {
             col_3: 4,   // Order No
             col_4: 5,   // Design No
             col_5: 6,   // Fitting Detail
-            col_6: 7,   // Blouse Size
-            col_7: 8,   // Customize Blouse
-            col_8: 9,   // Koti Size
-            col_9: 10,  // Kurta Size
-            col_10: 11, // Platform
-            col_11: 12, // Pcs
-            col_12: 13, // Fitting Name
-            col_13: 14, // Final Date
-            col_14: 15, // Fitting Received
-            col_15: 16, // Fitting In/Return
-            col_16: 17, // Dispatch Date
-            col_17: 18  // User Name Log
+            col_7: 7,   // Customize Blouse
+            col_8: 8,   // Koti Size
+            col_9: 9,   // Kurta Size
+            col_10: 10, // Platform
+            col_11: 11, // Pcs
+            col_12: 12, // Fitting Name
+            col_13: 13, // Final Date
+            col_14: 14, // Fitting Received
+            col_15: 15, // Fitting In/Return
+            col_16: 16, // Dispatch Date
+            col_17: 17  // User Name Log
         };
-        const ACTION_COL_INDEX = 19;
+        const ACTION_COL_INDEX = 18;
 
         let visibleCols = null; // null means show all (for Admins)
         if (!isAdmin) { // Only apply restrictions for non-admins
@@ -2015,7 +2129,6 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'col_3', label: 'Order No', color: '#f59e0b' },
             { key: 'col_4', label: 'Design No', color: '#f59e0b' },
             { key: 'col_5', label: 'Fitting Detail', color: '#f59e0b' },
-            { key: 'col_6', label: 'Blouse Size', color: '#f59e0b' },
             { key: 'col_7', label: 'Customize Blouse', color: '#f59e0b' },
             { key: 'col_8', label: 'Koti Size', color: '#f59e0b' },
             { key: 'col_9', label: 'Kurta Size', color: '#f59e0b' },
