@@ -246,7 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (JSON.stringify(data) !== JSON.stringify(tableData)) {
                                 // Important: Check if user is currently typing before refreshing UI
                                 const activeEl = document.activeElement;
-                                const isUserTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT') && activeEl.closest('#dataTable');
+                                const isUserInteracting = activeEl && activeEl.closest('#dataTable');
+                                const isRecentLocalSave = (Date.now() - lastLocalSaveTime) < 3000;
 
                                 // --- CRITICAL FIX: In-place Merge ---
                                 // Instead of tableData = data, we update objects in-place to keep UI row references alive.
@@ -270,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 localStorage.setItem(DATA_KEY, JSON.stringify(tableData));
 
                                 // Only render table from sync if user is NOT actively typing to prevent losing focus/input
-                                if (!isUserTyping) {
+                                if (!isUserInteracting && !isRecentLocalSave) {
                                     const totalPages = Math.ceil(tableData.length / ROWS_PER_PAGE) || 1;
                                     if (currentPage > totalPages) currentPage = totalPages;
                                     renderTable();
@@ -398,7 +399,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTable();
     }
 
+    let lastLocalSaveTime = 0;
+
     function saveToLocalStorage(modifiedIndex = -1) {
+        lastLocalSaveTime = Date.now();
         // 1. Save Local
         localStorage.setItem(DATA_KEY, JSON.stringify(tableData));
         localStorage.setItem('pis_current_page', currentPage);
@@ -958,6 +962,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (targetEl) {
             targetEl.focus();
+            if (typeof targetEl.scrollIntoView === 'function') {
+                targetEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
             if (targetEl.tagName === 'INPUT' && targetEl.type !== 'date' && typeof targetEl.select === 'function') {
                 setTimeout(() => {
                     try { targetEl.select(); } catch (e) {}
@@ -973,23 +980,45 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'SELECT')) return;
 
             const key = e.key;
-            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) return;
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Tab'].includes(key)) return;
 
             const field = target.getAttribute('data-field');
             const isDateField = ['date', 'orderDate', 'confirmationDate', 'finalDate', 'receiveDate', 'shipDate'].includes(field);
 
+            // Tab key: move to next field (or previous if Shift+Tab)
+            if (key === 'Tab') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    navigateTableGrid(target, 'left');
+                } else {
+                    navigateTableGrid(target, 'right');
+                }
+                return;
+            }
+
+            // Enter key: move to next field (or previous if Shift+Enter)
+            if (key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    navigateTableGrid(target, 'left');
+                } else {
+                    navigateTableGrid(target, 'right');
+                }
+                return;
+            }
+
             if (key === 'ArrowUp') {
+                if (target.tagName === 'SELECT') return; // Allow changing dropdown option
                 e.preventDefault();
                 navigateTableGrid(target, 'up');
             } else if (key === 'ArrowDown') {
+                if (target.tagName === 'SELECT') return; // Allow changing dropdown option
                 e.preventDefault();
-                navigateTableGrid(target, 'down');
-            } else if (key === 'Enter') {
-                e.preventDefault();
-                target.blur(); // Trigger change & auto-save
                 navigateTableGrid(target, 'down');
             } else if (key === 'ArrowLeft') {
-                if (isDateField || target.tagName === 'SELECT') {
+                if (isDateField) {
+                    return; // Allow moving between DD, MM, YYYY in date input
+                } else if (target.tagName === 'SELECT') {
                     e.preventDefault();
                     navigateTableGrid(target, 'left');
                 } else if (target.tagName === 'INPUT') {
@@ -1000,7 +1029,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             } else if (key === 'ArrowRight') {
-                if (isDateField || target.tagName === 'SELECT') {
+                if (isDateField) {
+                    return; // Allow moving between DD, MM, YYYY in date input
+                } else if (target.tagName === 'SELECT') {
                     e.preventDefault();
                     navigateTableGrid(target, 'right');
                 } else if (target.tagName === 'INPUT') {
@@ -2489,98 +2520,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeHistoryModal) {
         closeHistoryModal.addEventListener('click', () => {
             document.getElementById('historyModal').style.display = 'none';
-        });
-    }
-
-    // --- Keyboard Navigation for Data Table ---
-    const dataTable = document.getElementById('dataTable');
-    if (dataTable) {
-        dataTable.addEventListener('keydown', (e) => {
-            const target = e.target;
-            if (target.tagName !== 'INPUT' && target.tagName !== 'SELECT') return;
-
-            // Don't intercept up/down for select elements so they can still change options
-            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && target.tagName === 'SELECT') {
-                return;
-            }
-
-            let moveDirection = null;
-
-            if (e.key === 'ArrowUp') {
-                moveDirection = 'up';
-            } else if (e.key === 'ArrowDown') {
-                moveDirection = 'down';
-            } else if (e.key === 'ArrowLeft') {
-                let canMoveLeft = false;
-                if (target.tagName === 'INPUT') {
-                    if (target.type === 'date') {
-                        canMoveLeft = false;
-                    } else if (target.type === 'number') {
-                        canMoveLeft = true;
-                    } else {
-                        try {
-                            if (target.selectionStart === 0) canMoveLeft = true;
-                        } catch(err) { canMoveLeft = true; }
-                    }
-                } else {
-                    canMoveLeft = true; // SELECT
-                }
-                if (canMoveLeft) moveDirection = 'left';
-            } else if (e.key === 'ArrowRight') {
-                let canMoveRight = false;
-                if (target.tagName === 'INPUT') {
-                    if (target.type === 'date') {
-                        canMoveRight = false;
-                    } else if (target.type === 'number') {
-                        canMoveRight = true;
-                    } else {
-                        try {
-                            if (target.selectionEnd === target.value.length) canMoveRight = true;
-                        } catch(err) { canMoveRight = true; }
-                    }
-                } else {
-                    canMoveRight = true; // SELECT
-                }
-                if (canMoveRight) moveDirection = 'right';
-            }
-
-            if (!moveDirection) return;
-
-            const td = target.closest('td');
-            const tr = target.closest('tr');
-            if (!td || !tr) return;
-
-            const tds = Array.from(tr.children);
-            const colIndex = tds.indexOf(td);
-
-            if (moveDirection === 'up' || moveDirection === 'down') {
-                e.preventDefault();
-                const nextTr = moveDirection === 'up' ? tr.previousElementSibling : tr.nextElementSibling;
-                if (nextTr) {
-                    const nextTd = nextTr.children[colIndex];
-                    if (nextTd) {
-                        const nextInput = nextTd.querySelector('input, select');
-                        if (nextInput) {
-                            nextInput.focus();
-                        }
-                    }
-                }
-            } else if (moveDirection === 'left' || moveDirection === 'right') {
-                const inputsInRow = Array.from(tr.querySelectorAll('input, select'));
-                const currentIndex = inputsInRow.indexOf(target);
-                let nextInput = null;
-
-                if (moveDirection === 'left' && currentIndex > 0) {
-                    nextInput = inputsInRow[currentIndex - 1];
-                } else if (moveDirection === 'right' && currentIndex < inputsInRow.length - 1) {
-                    nextInput = inputsInRow[currentIndex + 1];
-                }
-
-                if (nextInput) {
-                    e.preventDefault();
-                    nextInput.focus();
-                }
-            }
         });
     }
 });
